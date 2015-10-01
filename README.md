@@ -1,6 +1,6 @@
-Lasta Thymeleaf
+Lasta Mixer2
 =======================
-Thymeleaf adapter for LastaFlute
+Mixer2 adapter for LastaFlute
 
 # Information
 ## Maven Dependency in pom.xml

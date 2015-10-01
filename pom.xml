@@ -6,8 +6,8 @@
 	<version>0.2.0-A-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
-	<name>Lasta Thymeleaf</name>
-	<description>Thymeleaf adapter for LastaFlute</description>
+	<name>Lasta Mixer2</name>
+	<description>Mixer2 adapter for LastaFlute</description>
 	<url>https://github.com/lastaflute</url>
 	<inceptionYear>2015</inceptionYear>
 
