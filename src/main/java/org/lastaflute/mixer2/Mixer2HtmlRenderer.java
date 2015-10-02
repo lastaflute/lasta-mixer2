@@ -16,22 +16,71 @@
 package org.lastaflute.mixer2;
 
 import java.io.IOException;
+import java.io.InputStream;
 
 import javax.servlet.ServletException;
 
+import org.dbflute.util.DfResourceUtil;
 import org.lastaflute.web.callback.ActionRuntime;
 import org.lastaflute.web.ruts.NextJourney;
 import org.lastaflute.web.ruts.renderer.HtmlRenderer;
 import org.lastaflute.web.servlet.request.RequestManager;
+import org.mixer2.Mixer2Engine;
+import org.mixer2.jaxb.xhtml.Html;
 
 /**
  * @author jflute
  */
 public class Mixer2HtmlRenderer implements HtmlRenderer {
 
+    // #thinking mapping design
+    // _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+    // src/main/java
+    //  |-org.docksidestage.app.web
+    //  |  |-product
+    //  |  |  |-ProductListAction.java
+    //  |  |  |-ProductListView.java
+    // src/main/resources
+    //  |-m2mockup
+    //  |  |-m2static
+    //  |  |  |-css
+    //  |  |  |-image
+    //  |  |-m2template
+    //  |     |-product
+    //  |     |  |-product_list.html => product.ProductListView
+    //
+    // or
+    //
+    // return asHtml(path_Sea_SeaLandHtml).withRenderer(() -> {
+    //     ...???
+    // });
+    //
+    // or
+    //
+    // return asHtml(path_Sea_SeaLandHtml).withRenderer(ProductListView.class);
+    // _/_/_/_/_/_/_/_/_/_/
     @Override
     public void render(RequestManager requestManager, ActionRuntime runtime, NextJourney journey) throws IOException, ServletException {
-        @SuppressWarnings("unused")
-        String routingPath = journey.getRoutingPath();
+        final Mixer2Engine engine = createMixer2Engine();
+        final Html html = loadHtml(engine, journey);
+        // #thinking view here?
+        write(requestManager, engine.saveToString(html));
+    }
+
+    protected Mixer2Engine createMixer2Engine() {
+        return new Mixer2Engine(); // #thinking cache?
+    }
+
+    protected Html loadHtml(Mixer2Engine engine, NextJourney journey) throws IOException {
+        final InputStream ins = DfResourceUtil.getResourceStream(journey.getRoutingPath()); // #thinking how?
+        return engine.loadHtmlTemplate(ins);
+    }
+
+    protected void write(RequestManager requestManager, String htmlText) {
+        requestManager.getResponseManager().write(htmlText, "text/html", getEncoding());
+    }
+
+    protected String getEncoding() {
+        return "UTF-8";
     }
 }
