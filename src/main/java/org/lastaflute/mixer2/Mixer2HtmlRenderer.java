@@ -36,6 +36,7 @@ import org.lastaflute.web.util.LaServletContextUtil;
 import org.mixer2.Mixer2Engine;
 import org.mixer2.jaxb.exception.Mixer2JAXBException;
 import org.mixer2.jaxb.xhtml.Html;
+import org.mixer2.xhtml.exception.TagTypeUnmatchException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -184,7 +185,12 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
     //                                                                        Dynamic HTML
     //                                                                        ============
     protected Html toDynamicHtml(ActionRuntime runtime, NextJourney journey, Mixer2View view, Html staticHtml) {
-        final Html dynamicHtml = view.toDynamicHtml(staticHtml);
+        final Html dynamicHtml;
+        try {
+            dynamicHtml = view.toDynamicHtml(staticHtml); // #pending unneeded return?
+        } catch (TagTypeUnmatchException e) { // #pending rich message
+            throw new IllegalStateException("Failed to render HTML.", e);
+        }
         if (dynamicHtml == null) {
             throwMixer2DynamicHtmlNofFoundException(runtime, journey, view, staticHtml);
         }

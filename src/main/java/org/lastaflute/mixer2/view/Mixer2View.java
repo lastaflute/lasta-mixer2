@@ -16,6 +16,7 @@
 package org.lastaflute.mixer2.view;
 
 import org.mixer2.jaxb.xhtml.Html;
+import org.mixer2.xhtml.exception.TagTypeUnmatchException;
 
 /**
  * @author jflute
@@ -25,6 +26,7 @@ public interface Mixer2View {
     /**
      * @param staticHtml The static html from template file. (NotNull)
      * @return The rendered dynamic html by this view. (NotNull)
+     * @throws TagTypeUnmatchException When specified tag type (e.g. Span.class) is unmatched with actual type.
      */
-    Html toDynamicHtml(Html staticHtml);
+    Html toDynamicHtml(Html staticHtml) throws TagTypeUnmatchException;
 }
