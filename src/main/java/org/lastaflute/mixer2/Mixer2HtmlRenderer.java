@@ -23,9 +23,9 @@ import javax.servlet.ServletException;
 import org.dbflute.helper.message.ExceptionMessageBuilder;
 import org.dbflute.util.DfResourceUtil;
 import org.dbflute.util.Srl;
-import org.lastaflute.mixer2.exception.Mixer2DynamicHtmlNofFoundException;
 import org.lastaflute.mixer2.exception.Mixer2TemplateHtmlNofFoundException;
 import org.lastaflute.mixer2.exception.Mixer2TemplateHtmlParseFailureException;
+import org.lastaflute.mixer2.exception.Mixer2TemplateHtmlTagTypeUnmatchException;
 import org.lastaflute.mixer2.exception.Mixer2ViewInterfaceNotImplementedException;
 import org.lastaflute.mixer2.view.Mixer2View;
 import org.lastaflute.web.ruts.NextJourney;
@@ -67,9 +67,9 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
         final Mixer2Engine engine = prepareTemplateEngine();
         final Mixer2View view = extractMixer2View(runtime, journey);
         showRendering(journey, view);
-        final Html staticHtml = loadStaticHtml(requestManager, runtime, journey, engine);
-        final Html dynamicHtml = toDynamicHtml(runtime, journey, view, staticHtml);
-        final String htmlText = engine.saveToString(dynamicHtml);
+        final Html html = loadStaticHtml(requestManager, runtime, journey, engine);
+        beDynamic(requestManager, runtime, journey, view, html);
+        final String htmlText = engine.saveToString(html);
         write(requestManager, htmlText);
     }
 
@@ -184,32 +184,28 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
     // ===================================================================================
     //                                                                        Dynamic HTML
     //                                                                        ============
-    protected Html toDynamicHtml(ActionRuntime runtime, NextJourney journey, Mixer2View view, Html staticHtml) {
-        final Html dynamicHtml;
+    protected void beDynamic(RequestManager requestManager, ActionRuntime runtime, NextJourney journey, Mixer2View view, Html html) {
         try {
-            dynamicHtml = view.toDynamicHtml(staticHtml); // #pending unneeded return?
-        } catch (TagTypeUnmatchException e) { // #pending rich message
-            throw new IllegalStateException("Failed to render HTML.", e);
+            view.beDynamic(html, requestManager);
+        } catch (TagTypeUnmatchException e) {
+            throwMixer2TemplateHtmlTagTypeUnmatchException(runtime, journey, view, html, e);
         }
-        if (dynamicHtml == null) {
-            throwMixer2DynamicHtmlNofFoundException(runtime, journey, view, staticHtml);
-        }
-        return dynamicHtml;
     }
 
-    protected void throwMixer2DynamicHtmlNofFoundException(ActionRuntime runtime, NextJourney journey, Mixer2View view, Html staticHtml) {
+    protected void throwMixer2TemplateHtmlTagTypeUnmatchException(ActionRuntime runtime, NextJourney journey, Mixer2View view, Html html,
+            TagTypeUnmatchException e) {
         final ExceptionMessageBuilder br = new ExceptionMessageBuilder();
-        br.addNotice("Not found the dynamic html from your view.");
+        br.addNotice("Unmatched tag type by your view.");
         br.addItem("Action");
         br.addElement(runtime);
         br.addItem("Template");
         br.addElement(journey);
         br.addItem("Mixer2 View");
         br.addElement(view);
-        br.addItem("Static HTML");
-        br.addElement(staticHtml);
+        br.addItem("HTML Object");
+        br.addElement(html);
         final String msg = br.buildExceptionMessage();
-        throw new Mixer2DynamicHtmlNofFoundException(msg);
+        throw new Mixer2TemplateHtmlTagTypeUnmatchException(msg, e);
     }
 
     // ===================================================================================

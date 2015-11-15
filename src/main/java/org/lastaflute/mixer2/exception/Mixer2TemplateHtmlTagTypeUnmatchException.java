@@ -20,15 +20,15 @@ import org.lastaflute.core.exception.LaSystemException;
 /**
  * @author jflute
  */
-public class Mixer2DynamicHtmlNofFoundException extends LaSystemException {
+public class Mixer2TemplateHtmlTagTypeUnmatchException extends LaSystemException {
 
     private static final long serialVersionUID = 1L;
 
-    public Mixer2DynamicHtmlNofFoundException(String msg) {
+    public Mixer2TemplateHtmlTagTypeUnmatchException(String msg) {
         super(msg);
     }
 
-    public Mixer2DynamicHtmlNofFoundException(String msg, Throwable cause) {
+    public Mixer2TemplateHtmlTagTypeUnmatchException(String msg, Throwable cause) {
         super(msg, cause);
     }
 }
