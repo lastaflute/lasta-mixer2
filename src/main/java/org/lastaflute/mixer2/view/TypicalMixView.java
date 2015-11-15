@@ -52,6 +52,7 @@ public abstract class TypicalMixView implements Mixer2View {
     public void beDynamic(Html html, RequestManager requestManager) throws TagTypeUnmatchException {
         adjustCssPath(html, requestManager);
         adjustErrors(html, requestManager);
+        // #pending adjust href path
         render(html, requestManager);
     }
 
