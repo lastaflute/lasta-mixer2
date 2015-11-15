@@ -22,11 +22,14 @@ import javax.servlet.ServletException;
 
 import org.dbflute.helper.message.ExceptionMessageBuilder;
 import org.dbflute.util.DfResourceUtil;
+import org.lastaflute.mixer2.exception.Mixer2TemplateHtmlNofFoundException;
+import org.lastaflute.mixer2.exception.Mixer2ViewInterfaceNotImplementedException;
 import org.lastaflute.mixer2.view.Mixer2View;
 import org.lastaflute.web.ruts.NextJourney;
 import org.lastaflute.web.ruts.process.ActionRuntime;
 import org.lastaflute.web.ruts.renderer.HtmlRenderer;
 import org.lastaflute.web.servlet.request.RequestManager;
+import org.lastaflute.web.util.LaServletContextUtil;
 import org.mixer2.Mixer2Engine;
 import org.mixer2.jaxb.xhtml.Html;
 
@@ -53,7 +56,7 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
     @Override
     public void render(RequestManager requestManager, ActionRuntime runtime, NextJourney journey) throws IOException, ServletException {
         final Mixer2Engine engine = prepareTemplateEngine();
-        final Html staticHtml = loadStaticHtml(engine, journey);
+        final Html staticHtml = loadStaticHtml(requestManager, runtime, journey, engine);
         final Mixer2View view = extractMixer2View(runtime, journey);
         final Html dynamicHtml = view.toDynamicHtml(staticHtml);
         final String htmlText = engine.saveToString(dynamicHtml);
@@ -67,9 +70,35 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
     // ===================================================================================
     //                                                                         Static HTML
     //                                                                         ===========
-    protected Html loadStaticHtml(Mixer2Engine engine, NextJourney journey) throws IOException {
-        final InputStream ins = DfResourceUtil.getResourceStream(journey.getRoutingPath()); // #thinking how?
+    protected Html loadStaticHtml(RequestManager requestManager, ActionRuntime runtime, NextJourney journey, Mixer2Engine engine)
+            throws IOException {
+        final String routingPath = journey.getRoutingPath();
+        final String webResourcePath = buildWebResourcePath(routingPath);
+        InputStream ins = requestManager.getServletContext().getResourceAsStream(webResourcePath);
+        if (ins == null) {
+            ins = DfResourceUtil.getResourceStream(routingPath);
+            if (ins == null) {
+                throwMixer2TemplateHtmlNotFoundException(runtime, journey, webResourcePath);
+            }
+        }
         return engine.loadHtmlTemplate(ins);
+    }
+
+    protected String buildWebResourcePath(String routingPath) {
+        return LaServletContextUtil.getHtmlViewPrefix() + routingPath;
+    }
+
+    protected void throwMixer2TemplateHtmlNotFoundException(ActionRuntime runtime, NextJourney journey, String webResourcePath) {
+        final ExceptionMessageBuilder br = new ExceptionMessageBuilder();
+        br.addNotice("Not found the Mixer2 template HTML file.");
+        br.addItem("Action");
+        br.addElement(runtime);
+        br.addItem("Template HTML");
+        br.addElement(journey);
+        br.addItem("WebResource Path");
+        br.addElement(webResourcePath);
+        final String msg = br.buildExceptionMessage();
+        throw new Mixer2TemplateHtmlNofFoundException(msg);
     }
 
     // ===================================================================================
@@ -78,14 +107,14 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
     protected Mixer2View extractMixer2View(ActionRuntime runtime, NextJourney journey) {
         final Object obj = journey.getViewObject().get();
         if (!(obj instanceof Mixer2View)) {
-            throwMixer2ViewInterfaceNotFoundException(runtime, obj);
+            throwMixer2ViewInterfaceNotImplementedException(runtime, obj);
         }
         return (Mixer2View) obj;
     }
 
-    protected void throwMixer2ViewInterfaceNotFoundException(ActionRuntime runtime, Object obj) {
+    protected void throwMixer2ViewInterfaceNotImplementedException(ActionRuntime runtime, Object obj) {
         final ExceptionMessageBuilder br = new ExceptionMessageBuilder();
-        br.addNotice("Not found the Mixer2 view interface in your view.");
+        br.addNotice("Not implemented the Mixer2 view interface.");
         br.addItem("Advice");
         br.addElement("The view should implement Mixer2 view like this:");
         br.addElement("  (x):");
@@ -109,7 +138,7 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
         br.addElement(obj.getClass());
         br.addElement(obj);
         final String msg = br.buildExceptionMessage();
-        throw new IllegalStateException(msg);
+        throw new Mixer2ViewInterfaceNotImplementedException(msg);
     }
 
     // ===================================================================================
