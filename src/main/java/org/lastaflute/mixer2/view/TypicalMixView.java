@@ -69,10 +69,11 @@ public abstract class TypicalMixView implements Mixer2View {
     //                                                                              Errors
     //                                                                              ======
     protected void adjustErrors(Html html, RequestManager requestManager) throws TagTypeUnmatchException {
-        ErrorMessages messages = createErrorMessages(requestManager);
+        final ErrorMessages messages = createErrorMessages(requestManager);
         if (messages.isEmpty()) {
             return;
         }
+        // #hope label coloring
         final Body body = html.getBody();
         final AbstractJaxb errorsAll = body.getById("errors-all"); // #hope Jaxb interaface (not abstract)
         if (errorsAll != null) {
@@ -88,7 +89,7 @@ public abstract class TypicalMixView implements Mixer2View {
             errorsAll.replaceInner(ul);
         } else {
             for (String property : messages.toPropertySet()) {
-                final AbstractJaxb errorsProperty = body.getById("errors-" + property);
+                final AbstractJaxb errorsProperty = body.getById("errors-" + buildPropertyIdExp(property));
                 if (errorsProperty == null) {
                     continue; // #thinking should be error?
                 }
@@ -121,5 +122,9 @@ public abstract class TypicalMixView implements Mixer2View {
 
     protected ActionMessages newEmptyMessages() {
         return new ActionMessages();
+    }
+
+    protected String buildPropertyIdExp(String property) {
+        return ActionMessages.GLOBAL_PROPERTY_KEY.equals(property) ? "global" : property;
     }
 }
