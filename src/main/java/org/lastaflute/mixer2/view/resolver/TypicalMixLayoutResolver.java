@@ -13,7 +13,7 @@
  * either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-package org.lastaflute.mixer2.view.typical;
+package org.lastaflute.mixer2.view.resolver;
 
 import org.lastaflute.mixer2.view.Mixer2Supporter;
 import org.mixer2.jaxb.xhtml.Footer;

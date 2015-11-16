@@ -13,11 +13,12 @@
  * either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-package org.lastaflute.mixer2.view.typical;
+package org.lastaflute.mixer2.view;
 
 import org.dbflute.util.Srl;
-import org.lastaflute.mixer2.view.Mixer2Supporter;
-import org.lastaflute.mixer2.view.Mixer2View;
+import org.lastaflute.mixer2.view.resolver.TypicalMixErrorsResolver;
+import org.lastaflute.mixer2.view.resolver.TypicalMixLayoutResolver;
+import org.lastaflute.mixer2.view.resolver.TypicalMixStyleResolver;
 import org.mixer2.jaxb.xhtml.Html;
 import org.mixer2.xhtml.exception.TagTypeUnmatchException;
 
