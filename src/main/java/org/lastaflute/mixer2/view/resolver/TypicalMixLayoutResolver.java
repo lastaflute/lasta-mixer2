@@ -39,7 +39,7 @@ public class TypicalMixLayoutResolver {
     }
 
     protected String getLayoutHtmlPath() {
-        return "/common/mix_layout.html"; // #pending rename to layout.html
+        return "/common/layout.html";
     }
 
     protected void replaceHeader(Html html, Mixer2Supporter supporter, Html loaded) {
