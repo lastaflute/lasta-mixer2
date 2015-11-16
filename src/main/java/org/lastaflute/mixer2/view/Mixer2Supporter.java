@@ -90,19 +90,19 @@ public class Mixer2Supporter {
     //                                                                            ========
     public OptionalThing<Html> loadHtml(String path) {
         return streamProvider.apply(path).map(ins -> {
-            return loadHtml(ins, path);
+            return checkAndLoadHtmlTemplate(ins, path);
         });
     }
 
     public <TAG extends AbstractJaxb> OptionalThing<TAG> loadById(String path, String id, Class<TAG> tagType) {
         return streamProvider.apply(path).map(ins -> {
-            return loadHtml(ins, path);
+            return checkAndLoadHtmlTemplate(ins, path);
         }).flatMap(html -> {
             return getById(html, id, tagType);
         });
     }
 
-    protected Html loadHtml(InputStream ins, String path) {
+    protected Html checkAndLoadHtmlTemplate(InputStream ins, String path) {
         try {
             return engine.checkAndLoadHtmlTemplate(ins);
         } catch (Mixer2JAXBException | IOException e) { // #pending rich message
