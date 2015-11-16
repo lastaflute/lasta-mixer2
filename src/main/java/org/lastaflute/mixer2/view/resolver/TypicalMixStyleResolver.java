@@ -27,6 +27,7 @@ import org.mixer2.xhtml.PathAdjuster;
 public class TypicalMixStyleResolver {
 
     protected static final Pattern CSS_PATTERN = Pattern.compile("^\\.+/.*css/(.*)$");
+    protected static final Pattern JS_PATTERN = Pattern.compile("^\\.+/.*js/(.*)$");
 
     public void resolveStyle(Html html, Mixer2Supporter supporter) {
         if (html == null) {
@@ -36,9 +37,14 @@ public class TypicalMixStyleResolver {
             throw new IllegalArgumentException("The supporter 'html' should not be null.");
         }
         replaceCssPath(html, supporter);
+        replaceJsPath(html, supporter);
     }
 
     protected void replaceCssPath(Html html, Mixer2Supporter supporter) {
         PathAdjuster.replacePath(html, CSS_PATTERN, supporter.getRequestManager().getContextPath() + "/css/$1");
+    }
+
+    protected void replaceJsPath(Html html, Mixer2Supporter supporter) {
+        PathAdjuster.replacePath(html, JS_PATTERN, supporter.getRequestManager().getContextPath() + "/js/$1");
     }
 }
