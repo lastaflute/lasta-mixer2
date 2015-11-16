@@ -50,28 +50,28 @@ public abstract class TypicalMixView implements Mixer2View {
     //                                                                        Dynamic HTML
     //                                                                        ============
     @Override
-    public void beDynamic(Html html, RequestManager requestManager) throws TagTypeUnmatchException {
-        adjustCssPath(html, requestManager);
-        adjustErrors(html, requestManager);
+    public void beDynamic(Html html, Mixer2Supporter supporter) throws TagTypeUnmatchException {
+        adjustCssPath(html, supporter);
+        adjustErrors(html, supporter);
         // #pending adjust href path
-        render(html, requestManager);
+        render(html, supporter);
     }
 
-    protected abstract void render(Html html, RequestManager requestManager) throws TagTypeUnmatchException;
+    protected abstract void render(Html html, Mixer2Supporter supporter) throws TagTypeUnmatchException;
 
     // ===================================================================================
     //                                                                            CSS Path
     //                                                                            ========
-    protected void adjustCssPath(Html html, RequestManager requestManager) {
+    protected void adjustCssPath(Html html, Mixer2Supporter supporter) {
         final Pattern pattern = Pattern.compile("^\\.+/.*css/(.*)$");
-        PathAdjuster.replacePath(html, pattern, requestManager.getContextPath() + "/css/$1");
+        PathAdjuster.replacePath(html, pattern, supporter.getRequestManager().getContextPath() + "/css/$1");
     }
 
     // ===================================================================================
     //                                                                              Errors
     //                                                                              ======
-    protected void adjustErrors(Html html, RequestManager requestManager) throws TagTypeUnmatchException {
-        final ErrorMessages messages = createErrorMessages(requestManager);
+    protected void adjustErrors(Html html, Mixer2Supporter supporter) throws TagTypeUnmatchException {
+        final ErrorMessages messages = createErrorMessages(supporter.getRequestManager());
         if (messages.isEmpty()) {
             return;
         }

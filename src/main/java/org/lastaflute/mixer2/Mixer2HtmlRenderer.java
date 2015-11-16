@@ -17,16 +17,19 @@ package org.lastaflute.mixer2;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.function.Function;
 
 import javax.servlet.ServletException;
 
 import org.dbflute.helper.message.ExceptionMessageBuilder;
+import org.dbflute.optional.OptionalThing;
 import org.dbflute.util.DfResourceUtil;
 import org.dbflute.util.Srl;
 import org.lastaflute.mixer2.exception.Mixer2TemplateHtmlNofFoundException;
 import org.lastaflute.mixer2.exception.Mixer2TemplateHtmlParseFailureException;
 import org.lastaflute.mixer2.exception.Mixer2TemplateHtmlTagTypeUnmatchException;
 import org.lastaflute.mixer2.exception.Mixer2ViewInterfaceNotImplementedException;
+import org.lastaflute.mixer2.view.Mixer2Supporter;
 import org.lastaflute.mixer2.view.Mixer2View;
 import org.lastaflute.web.ruts.NextJourney;
 import org.lastaflute.web.ruts.process.ActionRuntime;
@@ -50,13 +53,13 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
     // ===================================================================================
     //                                                                           Attribute
     //                                                                           =========
-    protected final Mixer2Engine templateEngine;
+    protected final Mixer2Engine engine;
 
     // ===================================================================================
     //                                                                         Constructor
     //                                                                         ===========
-    public Mixer2HtmlRenderer(Mixer2Engine templateEngine) {
-        this.templateEngine = templateEngine;
+    public Mixer2HtmlRenderer(Mixer2Engine engine) {
+        this.engine = engine;
     }
 
     // ===================================================================================
@@ -64,17 +67,12 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
     //                                                                              ======
     @Override
     public void render(RequestManager requestManager, ActionRuntime runtime, NextJourney journey) throws IOException, ServletException {
-        final Mixer2Engine engine = prepareTemplateEngine();
         final Mixer2View view = extractMixer2View(runtime, journey);
         showRendering(journey, view);
-        final Html html = loadStaticHtml(requestManager, runtime, journey, engine);
+        final Html html = loadStaticHtml(requestManager, runtime, journey);
         beDynamic(requestManager, runtime, journey, view, html);
         final String htmlText = engine.saveToString(html);
         write(requestManager, htmlText);
-    }
-
-    protected Mixer2Engine prepareTemplateEngine() {
-        return templateEngine;
     }
 
     protected void showRendering(NextJourney journey, Mixer2View view) {
@@ -127,17 +125,9 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
     // ===================================================================================
     //                                                                         Static HTML
     //                                                                         ===========
-    protected Html loadStaticHtml(RequestManager requestManager, ActionRuntime runtime, NextJourney journey, Mixer2Engine engine)
-            throws IOException {
+    protected Html loadStaticHtml(RequestManager requestManager, ActionRuntime runtime, NextJourney journey) throws IOException {
         final String routingPath = journey.getRoutingPath();
-        final String webPath = buildWebPath(routingPath);
-        InputStream ins = requestManager.getServletContext().getResourceAsStream(webPath);
-        if (ins == null) {
-            ins = DfResourceUtil.getResourceStream(routingPath);
-            if (ins == null) {
-                throwMixer2TemplateHtmlNotFoundException(runtime, journey, webPath);
-            }
-        }
+        final InputStream ins = prepareStream(requestManager, runtime, journey, routingPath).get();
         final Html staticHtml;
         try {
             staticHtml = engine.checkAndLoadHtmlTemplate(ins);
@@ -146,6 +136,56 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
             return null; // unreachable
         }
         return staticHtml;
+    }
+
+    // ===================================================================================
+    //                                                                        Dynamic HTML
+    //                                                                        ============
+    protected void beDynamic(RequestManager requestManager, ActionRuntime runtime, NextJourney journey, Mixer2View view, Html html) {
+        try {
+            view.beDynamic(html, createMixer2Supporter(requestManager, runtime, journey));
+        } catch (TagTypeUnmatchException e) {
+            throwMixer2TemplateHtmlTagTypeUnmatchException(runtime, journey, view, html, e);
+        }
+    }
+
+    protected Mixer2Supporter createMixer2Supporter(RequestManager requestManager, ActionRuntime runtime, NextJourney journey) {
+        return new Mixer2Supporter(engine, requestManager, new Function<String, OptionalThing<InputStream>>() {
+            public OptionalThing<InputStream> apply(String path) {
+                return prepareStream(requestManager, runtime, journey, path);
+            }
+        });
+    }
+
+    protected void throwMixer2TemplateHtmlTagTypeUnmatchException(ActionRuntime runtime, NextJourney journey, Mixer2View view, Html html,
+            TagTypeUnmatchException e) {
+        final ExceptionMessageBuilder br = new ExceptionMessageBuilder();
+        br.addNotice("Unmatched tag type by your view.");
+        br.addItem("Action");
+        br.addElement(runtime);
+        br.addItem("Template");
+        br.addElement(journey);
+        br.addItem("Mixer2 View");
+        br.addElement(view);
+        br.addItem("HTML Object");
+        br.addElement(html);
+        final String msg = br.buildExceptionMessage();
+        throw new Mixer2TemplateHtmlTagTypeUnmatchException(msg, e);
+    }
+
+    // ===================================================================================
+    //                                                                     Template Stream
+    //                                                                     ===============
+    protected OptionalThing<InputStream> prepareStream(RequestManager requestManager, ActionRuntime runtime, NextJourney journey,
+            String routingPath) {
+        final String webPath = buildWebPath(routingPath);
+        InputStream ins = requestManager.getServletContext().getResourceAsStream(webPath);
+        if (ins == null) {
+            ins = DfResourceUtil.getResourceStream(routingPath);
+        }
+        return OptionalThing.ofNullable(ins, () -> {
+            throwMixer2TemplateHtmlNotFoundException(runtime, journey, webPath);
+        });
     }
 
     protected String buildWebPath(String routingPath) {
@@ -179,33 +219,6 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
         }
         final String msg = br.buildExceptionMessage();
         throw new Mixer2TemplateHtmlParseFailureException(msg, cause);
-    }
-
-    // ===================================================================================
-    //                                                                        Dynamic HTML
-    //                                                                        ============
-    protected void beDynamic(RequestManager requestManager, ActionRuntime runtime, NextJourney journey, Mixer2View view, Html html) {
-        try {
-            view.beDynamic(html, requestManager);
-        } catch (TagTypeUnmatchException e) {
-            throwMixer2TemplateHtmlTagTypeUnmatchException(runtime, journey, view, html, e);
-        }
-    }
-
-    protected void throwMixer2TemplateHtmlTagTypeUnmatchException(ActionRuntime runtime, NextJourney journey, Mixer2View view, Html html,
-            TagTypeUnmatchException e) {
-        final ExceptionMessageBuilder br = new ExceptionMessageBuilder();
-        br.addNotice("Unmatched tag type by your view.");
-        br.addItem("Action");
-        br.addElement(runtime);
-        br.addItem("Template");
-        br.addElement(journey);
-        br.addItem("Mixer2 View");
-        br.addElement(view);
-        br.addItem("HTML Object");
-        br.addElement(html);
-        final String msg = br.buildExceptionMessage();
-        throw new Mixer2TemplateHtmlTagTypeUnmatchException(msg, e);
     }
 
     // ===================================================================================
