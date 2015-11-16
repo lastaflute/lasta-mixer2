@@ -27,6 +27,8 @@ import org.lastaflute.web.LastaWebKey;
 import org.lastaflute.web.ruts.message.ActionMessages;
 import org.lastaflute.web.servlet.request.RequestManager;
 import org.mixer2.jaxb.xhtml.Body;
+import org.mixer2.jaxb.xhtml.Footer;
+import org.mixer2.jaxb.xhtml.Header;
 import org.mixer2.jaxb.xhtml.Html;
 import org.mixer2.jaxb.xhtml.Li;
 import org.mixer2.jaxb.xhtml.Ul;
@@ -52,8 +54,9 @@ public abstract class TypicalMixView implements Mixer2View {
     @Override
     public void beDynamic(Html html, Mixer2Supporter supporter) throws TagTypeUnmatchException {
         adjustCssPath(html, supporter);
+        adjustHeaderFooter(html, supporter);
         adjustErrors(html, supporter);
-        // #pending adjust href path
+        // #pending adjust all href path
         render(html, supporter);
     }
 
@@ -65,6 +68,21 @@ public abstract class TypicalMixView implements Mixer2View {
     protected void adjustCssPath(Html html, Mixer2Supporter supporter) {
         final Pattern pattern = Pattern.compile("^\\.+/.*css/(.*)$");
         PathAdjuster.replacePath(html, pattern, supporter.getRequestManager().getContextPath() + "/css/$1");
+    }
+
+    // ===================================================================================
+    //                                                                       Header/Footer
+    //                                                                       =============
+    protected void adjustHeaderFooter(Html html, Mixer2Supporter supporter) {
+        // #pending jflute embedded? (2015/11/16)
+        supporter.loadHtml("/common/mix_layout.html").alwaysPresent(loaded -> {
+            final Header header = supporter.getById(loaded, "header", Header.class).get();
+            supporter.resolveLink(header);
+            supporter.replaceById(html, supporter, "header", header);
+            final Footer footer = supporter.getById(loaded, "footer", Footer.class).get();
+            supporter.resolveLink(footer);
+            supporter.replaceById(html, supporter, "footer", footer);
+        });
     }
 
     // ===================================================================================
