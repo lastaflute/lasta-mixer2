@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.dbflute.util.Srl;
 import org.lastaflute.mixer2.messages.ErrorMessages;
 import org.lastaflute.mixer2.messages.ResolvedMessage;
 import org.lastaflute.web.LastaWebKey;
@@ -127,5 +128,19 @@ public abstract class TypicalMixView implements Mixer2View {
 
     protected String buildPropertyIdExp(String property) {
         return ActionMessages.GLOBAL_PROPERTY_KEY.equals(property) ? "global" : property;
+    }
+
+    // ===================================================================================
+    //                                                                        Small Helper
+    //                                                                        ============
+    // -----------------------------------------------------
+    //                                        Empty Handling
+    //                                        --------------
+    protected boolean isEmpty(String str) {
+        return Srl.is_Null_or_Empty(str);
+    }
+
+    protected boolean isNotEmpty(String str) {
+        return Srl.is_NotNull_and_NotEmpty(str);
     }
 }
