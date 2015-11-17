@@ -20,7 +20,6 @@ import org.lastaflute.mixer2.view.resolver.TypicalMixErrorsResolver;
 import org.lastaflute.mixer2.view.resolver.TypicalMixLayoutResolver;
 import org.lastaflute.mixer2.view.resolver.TypicalMixStyleResolver;
 import org.mixer2.jaxb.xhtml.Html;
-import org.mixer2.xhtml.exception.TagTypeUnmatchException;
 
 /**
  * @author jflute
@@ -45,7 +44,7 @@ public abstract class TypicalMixView implements Mixer2View {
     //                                                                        Dynamic HTML
     //                                                                        ============
     @Override
-    public void beDynamic(Html html, Mixer2Supporter supporter) throws TagTypeUnmatchException {
+    public void beDynamic(Html html, Mixer2Supporter supporter) {
         resolveErrors(html, supporter);
         resolveLayout(html, supporter);
         resolveStyle(html, supporter);
@@ -53,12 +52,12 @@ public abstract class TypicalMixView implements Mixer2View {
         render(html, supporter);
     }
 
-    protected abstract void render(Html html, Mixer2Supporter supporter) throws TagTypeUnmatchException;
+    protected abstract void render(Html html, Mixer2Supporter supporter);
 
     // ===================================================================================
     //                                                                              Errors
     //                                                                              ======
-    protected void resolveErrors(Html html, Mixer2Supporter supporter) throws TagTypeUnmatchException {
+    protected void resolveErrors(Html html, Mixer2Supporter supporter) {
         errorsResolver.resolveErrors(html, supporter);
     }
 

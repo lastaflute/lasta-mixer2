@@ -25,9 +25,9 @@ import org.dbflute.helper.message.ExceptionMessageBuilder;
 import org.dbflute.optional.OptionalThing;
 import org.dbflute.util.DfResourceUtil;
 import org.dbflute.util.Srl;
+import org.lastaflute.mixer2.exception.Mixer2DynamicHtmlFailureException;
 import org.lastaflute.mixer2.exception.Mixer2TemplateHtmlNofFoundException;
 import org.lastaflute.mixer2.exception.Mixer2TemplateHtmlParseFailureException;
-import org.lastaflute.mixer2.exception.Mixer2TemplateHtmlTagTypeUnmatchException;
 import org.lastaflute.mixer2.exception.Mixer2ViewInterfaceNotImplementedException;
 import org.lastaflute.mixer2.view.Mixer2Supporter;
 import org.lastaflute.mixer2.view.Mixer2View;
@@ -39,7 +39,6 @@ import org.lastaflute.web.util.LaServletContextUtil;
 import org.mixer2.Mixer2Engine;
 import org.mixer2.jaxb.exception.Mixer2JAXBException;
 import org.mixer2.jaxb.xhtml.Html;
-import org.mixer2.xhtml.exception.TagTypeUnmatchException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -144,8 +143,8 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
     protected void beDynamic(RequestManager requestManager, ActionRuntime runtime, NextJourney journey, Mixer2View view, Html html) {
         try {
             view.beDynamic(html, createMixer2Supporter(requestManager, runtime, journey));
-        } catch (TagTypeUnmatchException e) {
-            throwMixer2TemplateHtmlTagTypeUnmatchException(runtime, journey, view, html, e);
+        } catch (RuntimeException e) {
+            throwMixer2DynamicHtmlFailureException(runtime, journey, view, html, e);
         }
     }
 
@@ -157,10 +156,10 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
         });
     }
 
-    protected void throwMixer2TemplateHtmlTagTypeUnmatchException(ActionRuntime runtime, NextJourney journey, Mixer2View view, Html html,
-            TagTypeUnmatchException e) {
+    protected void throwMixer2DynamicHtmlFailureException(ActionRuntime runtime, NextJourney journey, Mixer2View view, Html html,
+            RuntimeException e) {
         final ExceptionMessageBuilder br = new ExceptionMessageBuilder();
-        br.addNotice("Unmatched tag type by your view.");
+        br.addNotice("Failed to be dynamic HTML by your view.");
         br.addItem("Action");
         br.addElement(runtime);
         br.addItem("Template");
@@ -170,7 +169,7 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
         br.addItem("HTML Object");
         br.addElement(html);
         final String msg = br.buildExceptionMessage();
-        throw new Mixer2TemplateHtmlTagTypeUnmatchException(msg, e);
+        throw new Mixer2DynamicHtmlFailureException(msg, e);
     }
 
     // ===================================================================================

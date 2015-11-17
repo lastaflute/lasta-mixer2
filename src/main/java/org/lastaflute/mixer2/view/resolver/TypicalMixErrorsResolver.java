@@ -30,14 +30,13 @@ import org.mixer2.jaxb.xhtml.Html;
 import org.mixer2.jaxb.xhtml.Li;
 import org.mixer2.jaxb.xhtml.Ul;
 import org.mixer2.xhtml.AbstractJaxb;
-import org.mixer2.xhtml.exception.TagTypeUnmatchException;
 
 /**
  * @author jflute
  */
 public class TypicalMixErrorsResolver {
 
-    public void resolveErrors(Html html, Mixer2Supporter supporter) throws TagTypeUnmatchException {
+    public void resolveErrors(Html html, Mixer2Supporter supporter) {
         if (html == null) {
             throw new IllegalArgumentException("The argument 'html' should not be null.");
         }
