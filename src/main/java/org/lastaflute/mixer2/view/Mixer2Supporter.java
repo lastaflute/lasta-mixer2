@@ -56,7 +56,7 @@ public class Mixer2Supporter {
     // ===================================================================================
     //                                                                             Get Tag
     //                                                                             =======
-    public <TAG extends AbstractJaxb> OptionalThing<TAG> getById(AbstractJaxb baseTag, String id, Class<TAG> tagType) {
+    public <TAG extends AbstractJaxb> OptionalThing<TAG> findById(AbstractJaxb baseTag, String id, Class<TAG> tagType) {
         try {
             final TAG found = baseTag.getById(id, tagType);
             return OptionalThing.ofNullable(found, () -> { // #pending rich message
@@ -118,7 +118,7 @@ public class Mixer2Supporter {
         return streamProvider.apply(path).map(ins -> {
             return checkAndLoadHtmlTemplate(ins, path);
         }).flatMap(html -> {
-            return getById(html, id, tagType);
+            return findById(html, id, tagType);
         });
     }
 

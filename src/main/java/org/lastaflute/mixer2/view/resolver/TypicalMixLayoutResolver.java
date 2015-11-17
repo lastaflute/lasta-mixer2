@@ -43,7 +43,7 @@ public class TypicalMixLayoutResolver {
     }
 
     protected void replaceHeader(Html html, Mixer2Supporter supporter, Html loaded) {
-        final Header header = supporter.getById(loaded, "header", Header.class).get();
+        final Header header = supporter.findById(loaded, "header", Header.class).get();
         supporter.resolveUrlLink(header);
         asYouLikeHeader(header, supporter);
         supporter.replaceById(html, "header", header);
@@ -53,7 +53,7 @@ public class TypicalMixLayoutResolver {
     }
 
     protected void replaceFooter(Html html, Mixer2Supporter supporter, Html loaded) {
-        final Footer footer = supporter.getById(loaded, "footer", Footer.class).get();
+        final Footer footer = supporter.findById(loaded, "footer", Footer.class).get();
         supporter.resolveUrlLink(footer);
         asYouLikeFooter(footer, supporter);
         supporter.replaceById(html, "footer", footer);
