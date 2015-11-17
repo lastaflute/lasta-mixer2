@@ -17,14 +17,18 @@ package org.lastaflute.mixer2;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.util.function.Function;
 
+import javax.annotation.Resource;
 import javax.servlet.ServletException;
 
 import org.dbflute.helper.message.ExceptionMessageBuilder;
 import org.dbflute.optional.OptionalThing;
+import org.dbflute.util.DfReflectionUtil;
 import org.dbflute.util.DfResourceUtil;
 import org.dbflute.util.Srl;
+import org.lastaflute.core.util.ContainerUtil;
 import org.lastaflute.mixer2.exception.Mixer2DynamicHtmlFailureException;
 import org.lastaflute.mixer2.exception.Mixer2TemplateHtmlNofFoundException;
 import org.lastaflute.mixer2.exception.Mixer2TemplateHtmlParseFailureException;
@@ -89,7 +93,9 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
         if (!(obj instanceof Mixer2View)) {
             throwMixer2ViewInterfaceNotImplementedException(runtime, obj);
         }
-        return (Mixer2View) obj;
+        final Mixer2View view = (Mixer2View) obj;
+        injectSimply(view);
+        return view;
     }
 
     protected void throwMixer2ViewInterfaceNotImplementedException(ActionRuntime runtime, Object obj) {
@@ -119,6 +125,25 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
         br.addElement(obj);
         final String msg = br.buildExceptionMessage();
         throw new Mixer2ViewInterfaceNotImplementedException(msg);
+    }
+
+    protected void injectSimply(Mixer2View view) {
+        new EverywhereInjector().injectSimply(view);
+    }
+
+    public static class EverywhereInjector { // #pending Lasta Di should provide it
+
+        public void injectSimply(Object target) {
+            for (Class<?> currentType = target.getClass(); !currentType.equals(Object.class); currentType = currentType.getSuperclass()) {
+                final Field[] fields = currentType.getDeclaredFields();
+                for (Field field : fields) {
+                    if (field.getAnnotation(Resource.class) != null) { // type only #for_now
+                        final Object component = ContainerUtil.getComponent(field.getType());
+                        DfReflectionUtil.setValueForcedly(field, target, component);
+                    }
+                }
+            }
+        }
     }
 
     // ===================================================================================
