@@ -72,7 +72,7 @@ public abstract class TypicalMixView implements Mixer2View {
         layoutResolver.resolveLayout(html, supporter);
     }
 
-    private TypicalMixLayoutResolver createTypicalMixLayoutResolver() {
+    protected TypicalMixLayoutResolver createTypicalMixLayoutResolver() {
         return new TypicalMixLayoutResolver();
     }
 
