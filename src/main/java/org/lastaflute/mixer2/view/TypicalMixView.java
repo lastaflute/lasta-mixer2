@@ -73,10 +73,12 @@ public abstract class TypicalMixView implements Mixer2View {
     }
 
     protected TypicalMixLayoutResolver createTypicalMixLayoutResolver() {
-        return new TypicalMixLayoutResolver();
+        final TypicalMixLayoutResolver resolver = new TypicalMixLayoutResolver();
+        customizeLayout(resolver);
+        return resolver;
     }
 
-    protected void setupLayoutResolver(TypicalMixLayoutResolver resolver) { // may be overridden
+    protected void customizeLayout(TypicalMixLayoutResolver resolver) { // may be overridden
     }
 
     // ===================================================================================
