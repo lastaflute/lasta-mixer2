@@ -99,9 +99,8 @@ public class Mixer2Supporter {
         throw new Mixer2GetByIDNotFoundException(msg);
     }
 
-    @SuppressWarnings("unchecked")
-    public <TAG extends AbstractJaxb> OptionalThing<TAG> findInput(AbstractJaxb baseTag, String name) {
-        return (OptionalThing<TAG>) findById(baseTag, name, Input.class); // #hope want to find by name
+    public OptionalThing<Input> findInput(AbstractJaxb baseTag, String name) {
+        return findById(baseTag, name, Input.class); // #hope want to find by name
     }
 
     // ===================================================================================
