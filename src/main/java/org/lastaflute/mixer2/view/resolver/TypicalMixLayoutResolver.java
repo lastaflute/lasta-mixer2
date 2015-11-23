@@ -116,10 +116,10 @@ public class TypicalMixLayoutResolver {
         }
         // TODO jflute mixer2: resolve head? merge? (2015/11/23)
         supporter.loadPartsHtml(getLayoutHtmlPath()).alwaysPresent(loaded -> {
-            if (isSuppressReplacingHeader()) {
+            if (isReplacingHeader()) {
                 replaceHeader(html, supporter, loaded);
             }
-            if (isSuppressReplacingFooter()) {
+            if (isReplacingFooter()) {
                 replaceFooter(html, supporter, loaded);
             }
             asYouLikeIt(html, supporter, loaded);
@@ -130,12 +130,12 @@ public class TypicalMixLayoutResolver {
         return "/common/layout.html";
     }
 
-    protected boolean isSuppressReplacingHeader() {
-        return suppressedHeader;
+    protected boolean isReplacingHeader() {
+        return !suppressedHeader;
     }
 
-    protected boolean isSuppressReplacingFooter() {
-        return suppressedFooter;
+    protected boolean isReplacingFooter() {
+        return !suppressedFooter;
     }
 
     protected void asYouLikeIt(Html html, Mixer2Supporter supporter, Html loaded) {
@@ -159,6 +159,7 @@ public class TypicalMixLayoutResolver {
     }
 
     protected void asYouLikeHeader(Header header, Mixer2Supporter supporter) {
+        System.out.println("@@@@: " + headerResolver);
         if (headerResolver != null) {
             headerResolver.resolve(header, supporter);
         }
