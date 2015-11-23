@@ -15,7 +15,10 @@
  */
 package org.lastaflute.mixer2.view;
 
+import java.util.List;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.dbflute.helper.message.ExceptionMessageBuilder;
 import org.dbflute.optional.OptionalThing;
@@ -26,8 +29,12 @@ import org.lastaflute.mixer2.exception.Mixer2ReplaceByIDNotFoundException;
 import org.lastaflute.mixer2.template.Mixer2TemplateReader;
 import org.lastaflute.web.servlet.request.RequestManager;
 import org.mixer2.Mixer2Engine;
+import org.mixer2.jaxb.xhtml.Body;
 import org.mixer2.jaxb.xhtml.Html;
 import org.mixer2.jaxb.xhtml.Input;
+import org.mixer2.jaxb.xhtml.Tbody;
+import org.mixer2.jaxb.xhtml.Td;
+import org.mixer2.jaxb.xhtml.Tr;
 import org.mixer2.xhtml.AbstractJaxb;
 import org.mixer2.xhtml.PathAdjuster;
 
@@ -165,6 +172,75 @@ public class Mixer2Supporter {
     public OptionalThing<Html> loadPartsHtml(String path) {
         assertObjectNotNull("path", path);
         return templateReader.loadHtml(path).map(loaded -> loaded.getHtml());
+    }
+
+    // ===================================================================================
+    //                                                                           Table Tag
+    //                                                                           =========
+    public <ENTITY> void reflectDataToTBody(Html html, List<ENTITY> entityList, String tbodyId,
+            Consumer<TableDataResource<ENTITY>> oneArgLambda) {
+        assertObjectNotNull("html", html);
+        assertObjectNotNull("entityList", entityList);
+        assertObjectNotNull("tbodyId", tbodyId);
+        assertObjectNotNull("oneArgLambda", oneArgLambda);
+        final Body body = html.getBody();
+        final Tbody tbody = findById(body, tbodyId, Tbody.class).get();
+        final Tr baseTr = tbody.getTr().get(0).copy(Tr.class); // #pending check out of bounds
+        tbody.unsetTr();
+        entityList.forEach(entity -> {
+            final Tr tr = baseTr.copy(Tr.class);
+            final List<Td> tdList = tr.getThOrTd().stream().map(flow -> {
+                return (Td) flow; // #pending check class cast
+            }).collect(Collectors.toList());
+            oneArgLambda.accept(new TableDataResource<ENTITY>(tbody, tr, tdList, entity));
+            tbody.getTr().add(tr);
+        });
+    }
+
+    public static class TableDataResource<ENTITY> {
+
+        protected final Tbody tbody;
+        protected final Tr tr;
+        protected final List<Td> tdList;
+        protected final ENTITY entity;
+        protected int index;
+
+        public TableDataResource(Tbody tbody, Tr tr, List<Td> tdList, ENTITY entity) {
+            this.tbody = tbody;
+            this.tr = tr;
+            this.tdList = tdList;
+            this.entity = entity;
+        }
+
+        public void reflectTag(AbstractJaxb tag) {
+            tdList.get(index).replaceInner(tag); // #pending check out of bounds
+            ++index;
+        }
+
+        public void reflectText(Object text) {
+            tdList.get(index).replaceInner(text.toString()); // #pending check out of bounds
+            ++index;
+        }
+
+        public Tbody getTbody() {
+            return tbody;
+        }
+
+        public Tr getTr() {
+            return tr;
+        }
+
+        public Td getCurrentTd() {
+            return tdList.get(index); // #pending check out of bounds
+        }
+
+        public List<Td> getTdList() {
+            return tdList;
+        }
+
+        public ENTITY getEntity() {
+            return entity;
+        }
     }
 
     // ===================================================================================
