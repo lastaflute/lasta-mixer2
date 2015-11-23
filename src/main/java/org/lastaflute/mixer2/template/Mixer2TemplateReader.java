@@ -43,6 +43,7 @@ public class Mixer2TemplateReader {
     protected static final String DOCTYPE_DEF = "<!DOCTYPE html>";
     protected static final String HTML_PREFIX = "<html";
     protected static final String HTML_XMLNS_PREFIX = "<html xmlns=\"http://www.w3.org/1999/xhtml\"";
+    protected static final String LF = "\n";
 
     // ===================================================================================
     //                                                                           Attribute
@@ -109,7 +110,7 @@ public class Mixer2TemplateReader {
                             handleNonHtmlTagSecondLine(templatePath, line);
                         }
                     }
-                    sb.append("\n"); // LF fixedly
+                    sb.append(LF); // LF fixedly
                 }
                 sb.append(line);
                 ++index;
@@ -296,7 +297,7 @@ public class Mixer2TemplateReader {
     public String resolveHtmlDef(String htmlText, LoadedHtml loaded) {
         String resolved = htmlText;
         if (loaded.isDocTypeDefined()) {
-            resolved = DOCTYPE_DEF + resolved;
+            resolved = DOCTYPE_DEF + LF + resolved;
         }
         if (loaded.isXmlnsFiltered()) {
             resolved = resolved.replace(HTML_XMLNS_PREFIX, HTML_PREFIX);
