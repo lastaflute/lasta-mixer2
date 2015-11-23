@@ -25,6 +25,88 @@ import org.mixer2.jaxb.xhtml.Html;
  */
 public class TypicalMixLayoutResolver {
 
+    // ===================================================================================
+    //                                                                          Definition
+    //                                                                          ==========
+    protected static final String DEFAULT_HEADER_ID = "header";
+    protected static final String DEFAULT_FOOTER_ID = "footer";
+
+    // ===================================================================================
+    //                                                                           Attribute
+    //                                                                           =========
+    protected String headerId;
+    protected String footerId;
+    protected LayoutHeaderResolver headerResolver;
+    protected LayoutFooterResolver footerResolver;
+    protected LayoutPartsResolver partsResolver;
+    protected boolean suppressedHeader;
+    protected boolean suppressedFooter;
+
+    // ===================================================================================
+    //                                                                              Option
+    //                                                                              ======
+    // -----------------------------------------------------
+    //                                                   ID
+    //                                                  ----
+    public TypicalMixLayoutResolver headerId(String headerId) {
+        this.headerId = headerId;
+        return this;
+    }
+
+    public TypicalMixLayoutResolver footerId(String footerId) {
+        this.footerId = footerId;
+        return this;
+    }
+
+    // -----------------------------------------------------
+    //                                              Resolver
+    //                                              --------
+    public TypicalMixLayoutResolver resolveHeader(LayoutHeaderResolver headerResolver) {
+        this.headerResolver = headerResolver;
+        return this;
+    }
+
+    public static interface LayoutHeaderResolver {
+
+        void resolve(Header header, Mixer2Supporter supporter);
+    }
+
+    public TypicalMixLayoutResolver resolveFooter(LayoutFooterResolver footerResolver) {
+        this.footerResolver = footerResolver;
+        return this;
+    }
+
+    public static interface LayoutFooterResolver {
+
+        void resolve(Footer footer, Mixer2Supporter supporter);
+    }
+
+    public TypicalMixLayoutResolver resolveParts(LayoutPartsResolver partsHandler) {
+        this.partsResolver = partsHandler;
+        return this;
+    }
+
+    public static interface LayoutPartsResolver {
+
+        void resolve(Html html, Mixer2Supporter supporter, Html loaded);
+    }
+
+    // -----------------------------------------------------
+    //                                              Suppress
+    //                                              --------
+    public TypicalMixLayoutResolver suppressHeader(boolean headerSuppressed) {
+        this.suppressedHeader = headerSuppressed;
+        return this;
+    }
+
+    public TypicalMixLayoutResolver suppressFooter(boolean footerSuppressed) {
+        this.suppressedFooter = footerSuppressed;
+        return this;
+    }
+
+    // ===================================================================================
+    //                                                                            Resolver
+    //                                                                            ========
     public void resolveLayout(Html html, Mixer2Supporter supporter) {
         if (html == null) {
             throw new IllegalArgumentException("The argument 'html' should not be null.");
@@ -32,9 +114,15 @@ public class TypicalMixLayoutResolver {
         if (supporter == null) {
             throw new IllegalArgumentException("The supporter 'html' should not be null.");
         }
-        supporter.loadHtml(getLayoutHtmlPath()).alwaysPresent(loaded -> {
-            replaceHeader(html, supporter, loaded);
-            replaceFooter(html, supporter, loaded);
+        // TODO jflute mixer2: resolve head? merge? (2015/11/23)
+        supporter.loadPartsHtml(getLayoutHtmlPath()).alwaysPresent(loaded -> {
+            if (isSuppressReplacingHeader()) {
+                replaceHeader(html, supporter, loaded);
+            }
+            if (isSuppressReplacingFooter()) {
+                replaceFooter(html, supporter, loaded);
+            }
+            asYouLikeIt(html, supporter, loaded);
         });
     }
 
@@ -42,23 +130,57 @@ public class TypicalMixLayoutResolver {
         return "/common/layout.html";
     }
 
+    protected boolean isSuppressReplacingHeader() {
+        return suppressedHeader;
+    }
+
+    protected boolean isSuppressReplacingFooter() {
+        return suppressedFooter;
+    }
+
+    protected void asYouLikeIt(Html html, Mixer2Supporter supporter, Html loaded) {
+        if (partsResolver != null) {
+            partsResolver.resolve(html, supporter, loaded);
+        }
+    }
+
+    // ===================================================================================
+    //                                                                              Header
+    //                                                                              ======
     protected void replaceHeader(Html html, Mixer2Supporter supporter, Html loaded) {
-        final Header header = supporter.findById(loaded, "header", Header.class).get();
+        final Header header = supporter.findById(loaded, getHeaderId(), Header.class).get();
         supporter.resolveUrlLink(header);
         asYouLikeHeader(header, supporter);
-        supporter.replaceById(html, "header", header);
+        supporter.replaceById(html, getHeaderId(), header);
     }
 
-    protected void asYouLikeHeader(Header header, Mixer2Supporter supporter) { // overridden by application
+    protected String getHeaderId() {
+        return headerId != null ? headerId : DEFAULT_HEADER_ID;
     }
 
+    protected void asYouLikeHeader(Header header, Mixer2Supporter supporter) {
+        if (headerResolver != null) {
+            headerResolver.resolve(header, supporter);
+        }
+    }
+
+    // ===================================================================================
+    //                                                                              Footer
+    //                                                                              ======
     protected void replaceFooter(Html html, Mixer2Supporter supporter, Html loaded) {
-        final Footer footer = supporter.findById(loaded, "footer", Footer.class).get();
+        final Footer footer = supporter.findById(loaded, getFooterId(), Footer.class).get();
         supporter.resolveUrlLink(footer);
         asYouLikeFooter(footer, supporter);
-        supporter.replaceById(html, "footer", footer);
+        supporter.replaceById(html, getFooterId(), footer);
     }
 
-    protected void asYouLikeFooter(Footer header, Mixer2Supporter supporter) { // overridden by application
+    protected String getFooterId() {
+        return footerId != null ? footerId : DEFAULT_FOOTER_ID;
+    }
+
+    protected void asYouLikeFooter(Footer footer, Mixer2Supporter supporter) {
+        if (footerResolver != null) {
+            footerResolver.resolve(footer, supporter);
+        }
     }
 }

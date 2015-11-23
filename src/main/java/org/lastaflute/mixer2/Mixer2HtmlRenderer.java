@@ -16,32 +16,26 @@
 package org.lastaflute.mixer2;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Field;
-import java.util.function.Function;
 
 import javax.annotation.Resource;
 import javax.servlet.ServletException;
 
 import org.dbflute.helper.message.ExceptionMessageBuilder;
-import org.dbflute.optional.OptionalThing;
 import org.dbflute.util.DfReflectionUtil;
-import org.dbflute.util.DfResourceUtil;
 import org.dbflute.util.Srl;
 import org.lastaflute.core.util.ContainerUtil;
 import org.lastaflute.mixer2.exception.Mixer2DynamicHtmlFailureException;
-import org.lastaflute.mixer2.exception.Mixer2TemplateHtmlNofFoundException;
-import org.lastaflute.mixer2.exception.Mixer2TemplateHtmlParseFailureException;
 import org.lastaflute.mixer2.exception.Mixer2ViewInterfaceNotImplementedException;
+import org.lastaflute.mixer2.template.Mixer2TemplateReader;
+import org.lastaflute.mixer2.template.Mixer2TemplateReader.LoadedHtml;
 import org.lastaflute.mixer2.view.Mixer2Supporter;
 import org.lastaflute.mixer2.view.Mixer2View;
 import org.lastaflute.web.ruts.NextJourney;
 import org.lastaflute.web.ruts.process.ActionRuntime;
 import org.lastaflute.web.ruts.renderer.HtmlRenderer;
 import org.lastaflute.web.servlet.request.RequestManager;
-import org.lastaflute.web.util.LaServletContextUtil;
 import org.mixer2.Mixer2Engine;
-import org.mixer2.jaxb.exception.Mixer2JAXBException;
 import org.mixer2.jaxb.xhtml.Html;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +45,9 @@ import org.slf4j.LoggerFactory;
  */
 public class Mixer2HtmlRenderer implements HtmlRenderer {
 
+    // ===================================================================================
+    //                                                                          Definition
+    //                                                                          ==========
     private static final Logger logger = LoggerFactory.getLogger(Mixer2HtmlRenderer.class);
 
     // ===================================================================================
@@ -72,10 +69,13 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
     public void render(RequestManager requestManager, ActionRuntime runtime, NextJourney journey) throws IOException, ServletException {
         final Mixer2View view = extractMixer2View(runtime, journey);
         showRendering(journey, view);
-        final Html html = loadStaticHtml(requestManager, runtime, journey);
-        beDynamic(requestManager, runtime, journey, view, html);
+        final Mixer2TemplateReader reader = new Mixer2TemplateReader(engine, requestManager, runtime);
+        final LoadedHtml loadedHtml = reader.loadHtml(journey.getRoutingPath()).get();
+        final Html html = loadedHtml.getHtml();
+        beDynamic(requestManager, runtime, journey, view, reader, html);
         final String htmlText = engine.saveToString(html);
-        write(requestManager, htmlText);
+        final String realText = reader.resolveHtmlDef(htmlText, loadedHtml);
+        write(requestManager, realText);
     }
 
     protected void showRendering(NextJourney journey, Mixer2View view) {
@@ -104,18 +104,18 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
         br.addItem("Advice");
         br.addElement("The view should implement Mixer2 view like this:");
         br.addElement("  (x):");
-        br.addElement("    public class SeaView { // *NG");
+        br.addElement("    public class SeaView { // *Bad");
         br.addElement("        ...");
         br.addElement("    }");
         br.addElement("  (o):");
-        br.addElement("    public class SeaView implements Mixer2View { // OK");
+        br.addElement("    public class SeaView implements Mixer2View { // Good");
         br.addElement("        ...");
         br.addElement("    }");
         br.addElement("  (o):");
         br.addElement("    public abstract class HarborBaseView implements Mixer2View {");
         br.addElement("        ...");
         br.addElement("    }");
-        br.addElement("    public class SeaView extends HarborBaseView { // OK");
+        br.addElement("    public class SeaView extends HarborBaseView { // Good");
         br.addElement("        ...");
         br.addElement("    }");
         br.addItem("Action");
@@ -147,38 +147,20 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
     }
 
     // ===================================================================================
-    //                                                                         Static HTML
-    //                                                                         ===========
-    protected Html loadStaticHtml(RequestManager requestManager, ActionRuntime runtime, NextJourney journey) throws IOException {
-        final String routingPath = journey.getRoutingPath();
-        final InputStream ins = prepareStream(requestManager, runtime, journey, routingPath).get();
-        final Html staticHtml;
-        try {
-            staticHtml = engine.checkAndLoadHtmlTemplate(ins);
-        } catch (Mixer2JAXBException e) {
-            throwMixer2TemplateHtmlParseFailureException(runtime, journey, e);
-            return null; // unreachable
-        }
-        return staticHtml;
-    }
-
-    // ===================================================================================
     //                                                                        Dynamic HTML
     //                                                                        ============
-    protected void beDynamic(RequestManager requestManager, ActionRuntime runtime, NextJourney journey, Mixer2View view, Html html) {
+    protected void beDynamic(RequestManager requestManager, ActionRuntime runtime, NextJourney journey, Mixer2View view,
+            Mixer2TemplateReader reader, Html html) {
         try {
-            view.beDynamic(html, createMixer2Supporter(requestManager, runtime, journey));
+            view.beDynamic(html, createMixer2Supporter(requestManager, runtime, journey, reader));
         } catch (RuntimeException e) {
             throwMixer2DynamicHtmlFailureException(runtime, journey, view, html, e);
         }
     }
 
-    protected Mixer2Supporter createMixer2Supporter(RequestManager requestManager, ActionRuntime runtime, NextJourney journey) {
-        return new Mixer2Supporter(engine, requestManager, new Function<String, OptionalThing<InputStream>>() {
-            public OptionalThing<InputStream> apply(String path) {
-                return prepareStream(requestManager, runtime, journey, path);
-            }
-        });
+    protected Mixer2Supporter createMixer2Supporter(RequestManager requestManager, ActionRuntime runtime, NextJourney journey,
+            Mixer2TemplateReader reader) {
+        return new Mixer2Supporter(engine, requestManager, reader);
     }
 
     protected void throwMixer2DynamicHtmlFailureException(ActionRuntime runtime, NextJourney journey, Mixer2View view, Html html,
@@ -195,54 +177,6 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
         br.addElement(html);
         final String msg = br.buildExceptionMessage();
         throw new Mixer2DynamicHtmlFailureException(msg, e);
-    }
-
-    // ===================================================================================
-    //                                                                     Template Stream
-    //                                                                     ===============
-    protected OptionalThing<InputStream> prepareStream(RequestManager requestManager, ActionRuntime runtime, NextJourney journey,
-            String routingPath) {
-        final String webPath = buildWebPath(routingPath);
-        InputStream ins = requestManager.getServletContext().getResourceAsStream(webPath);
-        if (ins == null) {
-            ins = DfResourceUtil.getResourceStream(routingPath);
-        }
-        return OptionalThing.ofNullable(ins, () -> {
-            throwMixer2TemplateHtmlNotFoundException(runtime, journey, webPath);
-        });
-    }
-
-    protected String buildWebPath(String routingPath) {
-        return LaServletContextUtil.getHtmlViewPrefix() + routingPath;
-    }
-
-    protected void throwMixer2TemplateHtmlNotFoundException(ActionRuntime runtime, NextJourney journey, String webPath) {
-        final ExceptionMessageBuilder br = new ExceptionMessageBuilder();
-        br.addNotice("Not found the Mixer2 template HTML file.");
-        br.addItem("Action");
-        br.addElement(runtime);
-        br.addItem("Template");
-        br.addElement(journey);
-        br.addItem("Web Path");
-        br.addElement(webPath);
-        final String msg = br.buildExceptionMessage();
-        throw new Mixer2TemplateHtmlNofFoundException(msg);
-    }
-
-    protected void throwMixer2TemplateHtmlParseFailureException(ActionRuntime runtime, NextJourney journey, Mixer2JAXBException cause) {
-        final ExceptionMessageBuilder br = new ExceptionMessageBuilder();
-        br.addNotice("Failed to parse the template html.");
-        br.addItem("Action");
-        br.addElement(runtime);
-        br.addItem("Template");
-        br.addElement(journey);
-        final String saxMsg = cause.getSAXParseExceptionMessage(); // #thinking how to get line number?
-        if (saxMsg != null) {
-            br.addItem("SAX Message");
-            br.addElement(saxMsg);
-        }
-        final String msg = br.buildExceptionMessage();
-        throw new Mixer2TemplateHtmlParseFailureException(msg, cause);
     }
 
     // ===================================================================================

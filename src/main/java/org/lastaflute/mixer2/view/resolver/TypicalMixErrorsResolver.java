@@ -43,7 +43,7 @@ public class TypicalMixErrorsResolver {
         if (supporter == null) {
             throw new IllegalArgumentException("The supporter 'html' should not be null.");
         }
-        final ErrorMessages messages = createErrorMessages(supporter.getRequestManager()); // #pending other class
+        final ErrorMessages messages = createErrorMessages(supporter.getRequestManager());
         if (messages.isEmpty()) {
             return;
         }

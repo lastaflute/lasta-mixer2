@@ -15,16 +15,19 @@
  */
 package org.lastaflute.mixer2.view;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.function.Function;
 import java.util.regex.Pattern;
 
+import org.dbflute.helper.message.ExceptionMessageBuilder;
 import org.dbflute.optional.OptionalThing;
+import org.lastaflute.mixer2.exception.Mixer2GetByIDFailureException;
+import org.lastaflute.mixer2.exception.Mixer2GetByIDNotFoundException;
+import org.lastaflute.mixer2.exception.Mixer2ReplaceByIDFailureException;
+import org.lastaflute.mixer2.exception.Mixer2ReplaceByIDNotFoundException;
+import org.lastaflute.mixer2.template.Mixer2TemplateReader;
 import org.lastaflute.web.servlet.request.RequestManager;
 import org.mixer2.Mixer2Engine;
-import org.mixer2.jaxb.exception.Mixer2JAXBException;
 import org.mixer2.jaxb.xhtml.Html;
+import org.mixer2.jaxb.xhtml.Input;
 import org.mixer2.xhtml.AbstractJaxb;
 import org.mixer2.xhtml.PathAdjuster;
 
@@ -38,58 +41,114 @@ public class Mixer2Supporter {
     //                                                                           =========
     protected final Mixer2Engine engine;
     protected final RequestManager requestManager;
-    protected final Function<String, OptionalThing<InputStream>> streamProvider;
+    protected final Mixer2TemplateReader templateReader;
 
     // ===================================================================================
     //                                                                         Constructor
     //                                                                         ===========
-    public Mixer2Supporter(Mixer2Engine engine, RequestManager requestManager,
-            Function<String, OptionalThing<InputStream>> streamProvider) {
+    public Mixer2Supporter(Mixer2Engine engine, RequestManager requestManager, Mixer2TemplateReader templateReader) {
         assertObjectNotNull("engine", engine);
         assertObjectNotNull("requestManager", requestManager);
-        assertObjectNotNull("streamProvider", streamProvider);
+        assertObjectNotNull("templateReader", templateReader);
         this.engine = engine;
         this.requestManager = requestManager;
-        this.streamProvider = streamProvider;
+        this.templateReader = templateReader;
     }
 
     // ===================================================================================
-    //                                                                             Get Tag
-    //                                                                             =======
+    //                                                                            Find Tag
+    //                                                                            ========
     public <TAG extends AbstractJaxb> OptionalThing<TAG> findById(AbstractJaxb baseTag, String id, Class<TAG> tagType) {
+        assertObjectNotNull("baseTag", baseTag);
+        assertObjectNotNull("id", id);
+        assertObjectNotNull("tagType", tagType);
+        final TAG found;
         try {
-            final TAG found = baseTag.getById(id, tagType);
-            return OptionalThing.ofNullable(found, () -> { // #pending rich message
-                throw new IllegalStateException("Not found the ID in the tag: " + id + ", " + tagType + ", " + baseTag);
-            });
-        } catch (Exception e) { // #pending rich message
-            throw new IllegalStateException("Failed to get by the ID: " + id + ", " + tagType, e);
+            found = baseTag.getById(id, tagType);
+        } catch (RuntimeException e) {
+            throwMixer2GetByIDFailureException(baseTag, id, tagType, e);
+            return null; // unreachable
         }
+        return OptionalThing.ofNullable(found, () -> throwMixer2GetByIDNotFoundException(baseTag, id, tagType));
+    }
+
+    protected <TAG extends AbstractJaxb> void throwMixer2GetByIDFailureException(AbstractJaxb baseTag, String id, Class<TAG> tagType,
+            RuntimeException cause) {
+        final ExceptionMessageBuilder br = new ExceptionMessageBuilder();
+        br.addNotice("Failed to get by the ID.");
+        br.addItem("Failure ID");
+        br.addElement(id);
+        br.addItem("Tag Type");
+        br.addElement(tagType);
+        br.addItem("Base Tag");
+        br.addElement(baseTag);
+        final String msg = br.buildExceptionMessage();
+        throw new Mixer2GetByIDFailureException(msg, cause);
+    }
+
+    protected <TAG extends AbstractJaxb> void throwMixer2GetByIDNotFoundException(AbstractJaxb baseTag, String id, Class<TAG> tagType) {
+        final ExceptionMessageBuilder br = new ExceptionMessageBuilder();
+        br.addNotice("Not found the ID in the tag by getById().");
+        br.addItem("NotFound ID");
+        br.addElement(id);
+        br.addItem("Tag Type");
+        br.addElement(tagType);
+        br.addItem("Base Tag");
+        br.addElement(baseTag);
+        final String msg = br.buildExceptionMessage();
+        throw new Mixer2GetByIDNotFoundException(msg);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <TAG extends AbstractJaxb> OptionalThing<TAG> findInput(AbstractJaxb baseTag, String name) {
+        return (OptionalThing<TAG>) findById(baseTag, name, Input.class); // #hope want to find by name
     }
 
     // ===================================================================================
     //                                                                         Replace Tag
     //                                                                         ===========
-    public void replaceById(AbstractJaxb replaced, String id, AbstractJaxb replacememt) {
-        assertObjectNotNull("replaced", replaced);
+    public void replaceById(AbstractJaxb baseTag, String id, AbstractJaxb replacememt) {
+        assertObjectNotNull("baseTag", baseTag);
         assertObjectNotNull("id", id);
         assertObjectNotNull("replacememt", replacememt);
+        boolean replaced;
         try {
-            if (!replaced.replaceById(id, replacememt)) {
-                throw new IllegalStateException("Failed to replace by the ID: " + id);
-            }
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to replace.", e); // #pending rich message
+            replaced = baseTag.replaceById(id, replacememt);
+        } catch (RuntimeException e) {
+            throwMixer2ReplaceByIDFailureException(baseTag, id, replacememt, e);
+            return; // unreachable
+        }
+        if (!replaced) {
+            throwMixer2ReplaceByIDNotFoundException(baseTag, id, replacememt);
         }
     }
 
-    protected void assertObjectNotNull(String variableName, Object value) {
-        if (variableName == null) {
-            throw new IllegalArgumentException("The argument 'variableName' should not be null.");
-        }
-        if (value == null) {
-            throw new IllegalArgumentException("The argument '" + variableName + "' should not be null.");
-        }
+    protected <TAG extends AbstractJaxb> void throwMixer2ReplaceByIDFailureException(AbstractJaxb baseTag, String id,
+            AbstractJaxb replacememt, RuntimeException cause) {
+        final ExceptionMessageBuilder br = new ExceptionMessageBuilder();
+        br.addNotice("Failed to replace by the ID.");
+        br.addItem("Failure ID");
+        br.addElement(id);
+        br.addItem("Relacement");
+        br.addElement(replacememt);
+        br.addItem("Base Tag");
+        br.addElement(baseTag);
+        final String msg = br.buildExceptionMessage();
+        throw new Mixer2ReplaceByIDFailureException(msg, cause);
+    }
+
+    protected <TAG extends AbstractJaxb> void throwMixer2ReplaceByIDNotFoundException(AbstractJaxb baseTag, String id,
+            AbstractJaxb replacememt) {
+        final ExceptionMessageBuilder br = new ExceptionMessageBuilder();
+        br.addNotice("Not found the ID in the tag by replaceById().");
+        br.addItem("NotFound ID");
+        br.addElement(id);
+        br.addItem("Relacement");
+        br.addElement(replacememt);
+        br.addItem("Base Tag");
+        br.addElement(baseTag);
+        final String msg = br.buildExceptionMessage();
+        throw new Mixer2ReplaceByIDNotFoundException(msg);
     }
 
     // ===================================================================================
@@ -102,33 +161,22 @@ public class Mixer2Supporter {
     }
 
     // ===================================================================================
-    //                                                                            Load Tag
-    //                                                                            ========
-    public OptionalThing<Html> loadHtml(String path) {
+    //                                                                          Load Parts
+    //                                                                          ==========
+    public OptionalThing<Html> loadPartsHtml(String path) {
         assertObjectNotNull("path", path);
-        return streamProvider.apply(path).map(ins -> {
-            return checkAndLoadHtmlTemplate(ins, path);
-        });
+        return templateReader.loadHtml(path).map(loaded -> loaded.getHtml());
     }
 
-    public <TAG extends AbstractJaxb> OptionalThing<TAG> loadById(String path, String id, Class<TAG> tagType) {
-        assertObjectNotNull("path", path);
-        assertObjectNotNull("id", id);
-        assertObjectNotNull("tagType", tagType);
-        return streamProvider.apply(path).map(ins -> {
-            return checkAndLoadHtmlTemplate(ins, path);
-        }).flatMap(html -> {
-            return findById(html, id, tagType);
-        });
-    }
-
-    protected Html checkAndLoadHtmlTemplate(InputStream ins, String path) {
-        assertObjectNotNull("ins", ins);
-        assertObjectNotNull("path", path);
-        try {
-            return engine.checkAndLoadHtmlTemplate(ins);
-        } catch (Mixer2JAXBException | IOException e) { // #pending rich message
-            throw new IllegalStateException("Failed to load the template file: " + path, e);
+    // ===================================================================================
+    //                                                                      General Helper
+    //                                                                      ==============
+    protected void assertObjectNotNull(String variableName, Object value) {
+        if (variableName == null) {
+            throw new IllegalArgumentException("The argument 'variableName' should not be null.");
+        }
+        if (value == null) {
+            throw new IllegalArgumentException("The argument '" + variableName + "' should not be null.");
         }
     }
 
