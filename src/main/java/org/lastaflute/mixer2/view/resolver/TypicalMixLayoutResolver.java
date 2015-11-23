@@ -159,7 +159,6 @@ public class TypicalMixLayoutResolver {
     }
 
     protected void asYouLikeHeader(Header header, Mixer2Supporter supporter) {
-        System.out.println("@@@@: " + headerResolver);
         if (headerResolver != null) {
             headerResolver.resolve(header, supporter);
         }
