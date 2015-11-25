@@ -16,6 +16,7 @@
 package org.lastaflute.mixer2.view;
 
 import org.dbflute.util.Srl;
+import org.lastaflute.mixer2.view.resolver.TypicalMixClsResolver;
 import org.lastaflute.mixer2.view.resolver.TypicalMixErrorsResolver;
 import org.lastaflute.mixer2.view.resolver.TypicalMixLayoutResolver;
 import org.lastaflute.mixer2.view.resolver.TypicalMixStyleResolver;
@@ -36,6 +37,7 @@ public abstract class TypicalMixView implements Mixer2View {
     // ===================================================================================
     //                                                                           Attribute
     //                                                                           =========
+    protected final TypicalMixClsResolver clsResolver = createTypicalMixClsResolver();
     protected final TypicalMixErrorsResolver errorsResolver = createTypicalMixErrorsResolver();
     protected final TypicalMixLayoutResolver layoutResolver = createTypicalMixLayoutResolver();
     protected final TypicalMixStyleResolver styleResolver = createTypicalMixCssResolver();
@@ -45,6 +47,8 @@ public abstract class TypicalMixView implements Mixer2View {
     //                                                                        ============
     @Override
     public void beDynamic(Html html, Mixer2Supporter supporter) {
+        // #pending now making
+        //resolveCls(html, supporter);
         resolveErrors(html, supporter);
         resolveLayout(html, supporter);
         resolveStyle(html, supporter);
@@ -53,6 +57,17 @@ public abstract class TypicalMixView implements Mixer2View {
     }
 
     protected abstract void render(Html html, Mixer2Supporter supporter);
+
+    // ===================================================================================
+    //                                                                      Classification
+    //                                                                      ==============
+    protected void resolveCls(Html html, Mixer2Supporter supporter) {
+        clsResolver.resolveCls(html, supporter);
+    }
+
+    protected TypicalMixClsResolver createTypicalMixClsResolver() {
+        return new TypicalMixClsResolver();
+    }
 
     // ===================================================================================
     //                                                                              Errors

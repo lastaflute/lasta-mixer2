@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.lastaflute.html</groupId>
 	<artifactId>lasta-mixer2</artifactId>
-	<version>0.2.0-RC4</version> <!-- RC4 -->
+	<version>0.2.0-P-SNAPSHOT</version> <!-- RC5 -->
 	<packaging>jar</packaging>
 
 	<name>Lasta Mixer2</name>
