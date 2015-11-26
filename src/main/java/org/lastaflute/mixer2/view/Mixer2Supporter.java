@@ -31,7 +31,6 @@ import org.lastaflute.mixer2.exception.Mixer2ReplaceByIDNotFoundException;
 import org.lastaflute.mixer2.template.Mixer2TemplateReader;
 import org.lastaflute.web.servlet.request.RequestManager;
 import org.mixer2.Mixer2Engine;
-import org.mixer2.jaxb.xhtml.Body;
 import org.mixer2.jaxb.xhtml.Dl;
 import org.mixer2.jaxb.xhtml.Flow;
 import org.mixer2.jaxb.xhtml.Form;
@@ -127,6 +126,21 @@ public class Mixer2Supporter {
         return OptionalThing.ofNullable(foundInput, () -> {
             // #pending rich message
             throw new IllegalStateException("Not found the input tag by the name: " + name);
+        });
+    }
+
+    public OptionalThing<Select> findSelect(AbstractJaxb baseTag, String name) {
+        final List<AbstractJaxb> tagList = new ArrayList<AbstractJaxb>();
+        collectBy(Arrays.asList(baseTag), tag -> {
+            return Select.class.isAssignableFrom(tag.getClass()) && name.equals(((Select) tag).getName());
+        } , tagList); // #pending performance tuning as-one
+        if (tagList.size() > 2) { // #pending rich message
+            throw new IllegalStateException("Duplicate name for select tag: " + name + ", found=" + tagList);
+        }
+        final Select foundInput = (Select) (!tagList.isEmpty() ? tagList.get(0) : null);
+        return OptionalThing.ofNullable(foundInput, () -> {
+            // #pending rich message
+            throw new IllegalStateException("Not found the select tag by the name: " + name);
         });
     }
 
@@ -246,14 +260,13 @@ public class Mixer2Supporter {
     // ===================================================================================
     //                                                                           Table Tag
     //                                                                           =========
-    public <ENTITY> void reflectDataToTBody(Html html, List<ENTITY> entityList, String tbodyId,
+    public <ENTITY> void reflectListToTBody(AbstractJaxb baseTag, List<ENTITY> entityList, String tbodyId,
             Consumer<TableDataResource<ENTITY>> oneArgLambda) {
-        assertObjectNotNull("html", html);
+        assertObjectNotNull("baseTag", baseTag);
         assertObjectNotNull("entityList", entityList);
         assertObjectNotNull("tbodyId", tbodyId);
         assertObjectNotNull("oneArgLambda", oneArgLambda);
-        final Body body = html.getBody();
-        final Tbody tbody = findById(body, tbodyId, Tbody.class).get();
+        final Tbody tbody = findById(baseTag, tbodyId, Tbody.class).get();
         final Tr baseTr = tbody.getTr().get(0).copy(Tr.class); // #pending check out of bounds
         tbody.unsetTr();
         entityList.forEach(entity -> {

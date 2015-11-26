@@ -67,7 +67,7 @@ public class TypicalMixClsResolver {
         }
     }
 
-    protected ListedClassificationProvider getClassificationProvider() { // #pending
+    protected ListedClassificationProvider getClassificationProvider() { // #pending quit getComponent()
         return ContainerUtil.getComponent(FwAssistantDirector.class).assistDbDirection().assistListedClassificationProvider();
     }
 
