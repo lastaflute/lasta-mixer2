@@ -17,6 +17,7 @@ package org.lastaflute.mixer2.view.resolver;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.lastaflute.mixer2.messages.ErrorMessages;
@@ -48,30 +49,32 @@ public class TypicalMixErrorsResolver {
             return;
         }
         // #hope label coloring
-        final Body body = html.getBody();
-        final AbstractJaxb errorsAll = body.getById("errors-all"); // #hope Jaxb interaface (not abstract)
-        if (errorsAll != null) {
-            final List<ResolvedMessage> messageList = messages.getAll();
-            final Ul ul = new Ul();
-            final List<Object> liList = new ArrayList<Object>();
-            for (ResolvedMessage message : messageList) {
-                final Li li = new Li();
-                li.replaceInner(message.getMessage());
-                liList.add(li);
-            }
-            ul.replaceInner(liList); // #hope List<? extends Object>
-            errorsAll.replaceInner(ul);
-        } else {
-            for (String property : messages.toPropertySet()) {
-                final AbstractJaxb errorsProperty = body.getById("errors-" + buildPropertyIdExp(property));
-                if (errorsProperty == null) {
-                    continue; // #thinking should be error?
+        final Body body = html.getBody(); // #pending getByData
+        final List<AbstractJaxb> errorsTagList = supporter.searchTagList(body, tag -> {
+            return tag.getData("errors") != null;
+        });
+        final Set<String> propertySet = messages.toPropertySet();
+        for (AbstractJaxb errorsTag : errorsTagList) {
+            final String errorsName = errorsTag.getData("errors");
+            if ("all".equalsIgnoreCase(errorsName)) {
+                final List<ResolvedMessage> messageList = messages.getAll();
+                final Ul ul = new Ul();
+                final List<Object> liList = new ArrayList<Object>();
+                for (ResolvedMessage message : messageList) {
+                    final Li li = new Li();
+                    li.replaceInner(message.getMessage());
+                    liList.add(li);
                 }
-                final List<ResolvedMessage> messageList = messages.part(property);
-                final String joinedMessage = messageList.stream().map(message -> {
-                    return message.getMessage();
-                }).collect(Collectors.joining(", ")); // #thinking use any tag?
-                errorsProperty.replaceInner(joinedMessage);
+                ul.replaceInner(liList); // #hope List<? extends Object>
+                errorsTag.replaceInner(ul);
+            } else {
+                if (propertySet.contains(errorsName)) {
+                    final List<ResolvedMessage> messageList = messages.part(errorsName);
+                    final String joinedMessage = messageList.stream().map(message -> {
+                        return message.getMessage();
+                    }).collect(Collectors.joining(", ")); // #thinking use any tag?
+                    errorsTag.replaceInner(joinedMessage);
+                }
             }
         }
     }

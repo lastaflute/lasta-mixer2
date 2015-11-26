@@ -48,7 +48,7 @@ public abstract class TypicalMixView implements Mixer2View {
     @Override
     public void beDynamic(Html html, Mixer2Supporter supporter) {
         // #pending now making
-        //resolveCls(html, supporter);
+        resolveCls(html, supporter);
         resolveErrors(html, supporter);
         resolveLayout(html, supporter);
         resolveStyle(html, supporter);

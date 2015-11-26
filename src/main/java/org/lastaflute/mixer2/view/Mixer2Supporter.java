@@ -32,11 +32,13 @@ import org.lastaflute.mixer2.template.Mixer2TemplateReader;
 import org.lastaflute.web.servlet.request.RequestManager;
 import org.mixer2.Mixer2Engine;
 import org.mixer2.jaxb.xhtml.Body;
+import org.mixer2.jaxb.xhtml.Dl;
 import org.mixer2.jaxb.xhtml.Flow;
 import org.mixer2.jaxb.xhtml.Form;
 import org.mixer2.jaxb.xhtml.Html;
 import org.mixer2.jaxb.xhtml.Inline;
 import org.mixer2.jaxb.xhtml.Input;
+import org.mixer2.jaxb.xhtml.Ol;
 import org.mixer2.jaxb.xhtml.Select;
 import org.mixer2.jaxb.xhtml.Tbody;
 import org.mixer2.jaxb.xhtml.Td;
@@ -121,10 +123,60 @@ public class Mixer2Supporter {
         if (tagList.size() > 2) { // #pending rich message
             throw new IllegalStateException("Duplicate name for input tag: " + name + ", found=" + tagList);
         }
-        return OptionalThing.ofNullable((Input) (!tagList.isEmpty() ? tagList.get(0) : null), () -> {
+        final Input foundInput = (Input) (!tagList.isEmpty() ? tagList.get(0) : null);
+        return OptionalThing.ofNullable(foundInput, () -> {
             // #pending rich message
             throw new IllegalStateException("Not found the input tag by the name: " + name);
         });
+    }
+
+    // ===================================================================================
+    //                                                                              Search
+    //                                                                              ======
+    public <TAG extends AbstractJaxb> List<TAG> searchTagList(AbstractJaxb baseTag, TagDeterminer oneArgLambda) {
+        final List<AbstractJaxb> tagList = new ArrayList<AbstractJaxb>();
+        collectBy(Arrays.asList(baseTag), oneArgLambda, tagList);
+        @SuppressWarnings("unchecked")
+        final List<TAG> castList = (List<TAG>) tagList;
+        return castList;
+    }
+
+    @FunctionalInterface
+    public static interface TagDeterminer {
+
+        boolean isTarget(AbstractJaxb tag);
+    }
+
+    protected void collectBy(List<? extends Object> content, TagDeterminer determiner, List<AbstractJaxb> tagList) {
+        for (Object element : content) {
+            if (element instanceof AbstractJaxb) {
+                final AbstractJaxb tag = (AbstractJaxb) element;
+                if (determiner.isTarget(tag)) {
+                    tagList.add(tag);
+                }
+                if (element instanceof Flow) {
+                    collectBy(((Flow) tag).getContent(), determiner, tagList);
+                }
+                if (element instanceof Inline) {
+                    collectBy(((Inline) tag).getContent(), determiner, tagList);
+                }
+                if (element instanceof Form) {
+                    collectBy(((Form) element).getContent(), determiner, tagList);
+                }
+                if (element instanceof Ul) {
+                    collectBy(((Ul) element).getLi(), determiner, tagList);
+                }
+                if (element instanceof Ol) {
+                    collectBy(((Ol) element).getLi(), determiner, tagList);
+                }
+                if (element instanceof Dl) {
+                    collectBy(((Dl) element).getDtOrDd(), determiner, tagList);
+                }
+                if (element instanceof Select) {
+                    collectBy(((Select) element).getOptgroupOrOption(), determiner, tagList);
+                }
+            }
+        }
     }
 
     // ===================================================================================
@@ -257,47 +309,6 @@ public class Mixer2Supporter {
 
         public ENTITY getEntity() {
             return entity;
-        }
-    }
-
-    // ===================================================================================
-    //                                                                              Search
-    //                                                                              ======
-    public List<AbstractJaxb> searchTagList(AbstractJaxb tag, TagDeterminer oneArgLambda) {
-        final List<AbstractJaxb> tagList = new ArrayList<AbstractJaxb>();
-        collectBy(Arrays.asList(tag), oneArgLambda, tagList);
-        return tagList;
-    }
-
-    @FunctionalInterface
-    public static interface TagDeterminer {
-
-        boolean isTarget(AbstractJaxb tag);
-    }
-
-    protected void collectBy(List<? extends Object> content, TagDeterminer determiner, List<AbstractJaxb> tagList) {
-        for (Object element : content) {
-            if (element instanceof AbstractJaxb) {
-                final AbstractJaxb tag = (AbstractJaxb) element;
-                if (determiner.isTarget(tag)) {
-                    tagList.add(tag);
-                }
-                if (element instanceof Flow) {
-                    collectBy(((Flow) tag).getContent(), determiner, tagList);
-                }
-                if (element instanceof Inline) {
-                    collectBy(((Inline) tag).getContent(), determiner, tagList);
-                }
-                if (element instanceof Form) {
-                    collectBy(((Form) element).getContent(), determiner, tagList);
-                }
-                if (element instanceof Ul) {
-                    collectBy(((Ul) element).getLi(), determiner, tagList);
-                }
-                if (element instanceof Select) {
-                    collectBy(((Select) element).getOptgroupOrOption(), determiner, tagList);
-                }
-            }
         }
     }
 
