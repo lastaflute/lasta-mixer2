@@ -26,8 +26,18 @@ import org.mixer2.xhtml.PathAdjuster;
  */
 public class TypicalMixStyleResolver {
 
-    protected static final Pattern CSS_PATTERN = Pattern.compile("^\\.+/.*css/(.*)$");
-    protected static final Pattern JS_PATTERN = Pattern.compile("^\\.+/.*js/(.*)$");
+    protected static final Pattern CSS_PATH_PATTERN = Pattern.compile("^\\.+/.*css/(.*)$");
+    protected static final Pattern CSS_SUFFIX_PATTERN = Pattern.compile("\\.css$");
+    protected static final Pattern JS_PATH_PATTERN = Pattern.compile("^\\.+/.*js/(.*)$");
+    protected static final Pattern JS_SUFFIX_PATTERN = Pattern.compile("\\.js$");
+    protected static final long VQ = System.currentTimeMillis();
+
+    protected boolean versionQueryUsed;
+
+    public TypicalMixStyleResolver useVersionQuery() {
+        versionQueryUsed = true;
+        return this;
+    }
 
     public void resolveStyle(Html html, Mixer2Supporter supporter) {
         if (html == null) {
@@ -36,15 +46,29 @@ public class TypicalMixStyleResolver {
         if (supporter == null) {
             throw new IllegalArgumentException("The supporter 'html' should not be null.");
         }
-        replaceCssPath(html, supporter);
-        replaceJsPath(html, supporter);
+        adjustCssRelativePath(html, supporter);
+        if (versionQueryUsed) {
+            adjustCssVersionQuery(html, supporter);
+        }
+        adjustJsRelativePath(html, supporter);
+        if (versionQueryUsed) {
+            adjustJsVersionQuery(html, supporter);
+        }
     }
 
-    protected void replaceCssPath(Html html, Mixer2Supporter supporter) {
-        PathAdjuster.replacePath(html, CSS_PATTERN, supporter.getRequestManager().getContextPath() + "/css/$1");
+    protected void adjustCssRelativePath(Html html, Mixer2Supporter supporter) {
+        PathAdjuster.replacePath(html, CSS_PATH_PATTERN, supporter.getRequestManager().getContextPath() + "/css/$1");
     }
 
-    protected void replaceJsPath(Html html, Mixer2Supporter supporter) {
-        PathAdjuster.replacePath(html, JS_PATTERN, supporter.getRequestManager().getContextPath() + "/js/$1");
+    protected void adjustCssVersionQuery(Html html, Mixer2Supporter supporter) {
+        PathAdjuster.replacePath(html, CSS_SUFFIX_PATTERN, ".css?v=" + VQ);
+    }
+
+    protected void adjustJsRelativePath(Html html, Mixer2Supporter supporter) {
+        PathAdjuster.replacePath(html, JS_PATH_PATTERN, supporter.getRequestManager().getContextPath() + "/js/$1");
+    }
+
+    protected void adjustJsVersionQuery(Html html, Mixer2Supporter supporter) {
+        PathAdjuster.replacePath(html, JS_SUFFIX_PATTERN, ".js?v=" + VQ);
     }
 }

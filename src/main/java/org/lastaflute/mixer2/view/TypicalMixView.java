@@ -40,7 +40,7 @@ public abstract class TypicalMixView implements Mixer2View {
     protected final TypicalMixClsResolver clsResolver = createTypicalMixClsResolver();
     protected final TypicalMixErrorsResolver errorsResolver = createTypicalMixErrorsResolver();
     protected final TypicalMixLayoutResolver layoutResolver = createTypicalMixLayoutResolver();
-    protected final TypicalMixStyleResolver styleResolver = createTypicalMixCssResolver();
+    protected final TypicalMixStyleResolver styleResolver = createTypicalMixStyleResolver();
 
     // ===================================================================================
     //                                                                        Dynamic HTML
@@ -103,7 +103,7 @@ public abstract class TypicalMixView implements Mixer2View {
         styleResolver.resolveStyle(html, supporter);
     }
 
-    protected TypicalMixStyleResolver createTypicalMixCssResolver() {
+    protected TypicalMixStyleResolver createTypicalMixStyleResolver() {
         return new TypicalMixStyleResolver();
     }
 

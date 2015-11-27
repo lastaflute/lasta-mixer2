@@ -48,7 +48,6 @@ public class TypicalMixClsResolver {
         final List<Select> selectList = supporter.searchTagList(body, tag -> {
             return tag instanceof Select && hasClsOption((Select) tag);
         });
-        // #pending selected (needs form)
         for (Select select : selectList) {
             final ListedClassificationProvider provider = getClassificationProvider();
             final List<AbstractJaxb> groupOrOptList = select.getOptgroupOrOption();

@@ -15,10 +15,15 @@
  */
 package org.lastaflute.mixer2.view.resolver;
 
+import java.util.List;
+
 import org.lastaflute.mixer2.view.Mixer2Supporter;
+import org.mixer2.jaxb.xhtml.Body;
 import org.mixer2.jaxb.xhtml.Footer;
+import org.mixer2.jaxb.xhtml.Head;
 import org.mixer2.jaxb.xhtml.Header;
 import org.mixer2.jaxb.xhtml.Html;
+import org.mixer2.jaxb.xhtml.Script;
 
 /**
  * @author jflute
@@ -26,38 +31,19 @@ import org.mixer2.jaxb.xhtml.Html;
 public class TypicalMixLayoutResolver {
 
     // ===================================================================================
-    //                                                                          Definition
-    //                                                                          ==========
-    protected static final String DEFAULT_HEADER_ID = "header";
-    protected static final String DEFAULT_FOOTER_ID = "footer";
-
-    // ===================================================================================
     //                                                                           Attribute
     //                                                                           =========
-    protected String headerId;
-    protected String footerId;
     protected LayoutHeaderResolver headerResolver;
     protected LayoutFooterResolver footerResolver;
     protected LayoutPartsResolver partsResolver;
-    protected boolean suppressedHeader;
-    protected boolean suppressedFooter;
+    protected boolean includingHeadSuppressed;
+    protected boolean replacingHeaderSuppressed;
+    protected boolean replacingFooterSuppressed;
+    protected boolean includingScriptSuppressed;
 
     // ===================================================================================
     //                                                                              Option
     //                                                                              ======
-    // -----------------------------------------------------
-    //                                                   ID
-    //                                                  ----
-    public TypicalMixLayoutResolver headerId(String headerId) {
-        this.headerId = headerId;
-        return this;
-    }
-
-    public TypicalMixLayoutResolver footerId(String footerId) {
-        this.footerId = footerId;
-        return this;
-    }
-
     // -----------------------------------------------------
     //                                              Resolver
     //                                              --------
@@ -94,13 +80,23 @@ public class TypicalMixLayoutResolver {
     // -----------------------------------------------------
     //                                              Suppress
     //                                              --------
-    public TypicalMixLayoutResolver suppressHeader(boolean headerSuppressed) {
-        this.suppressedHeader = headerSuppressed;
+    public TypicalMixLayoutResolver suppressIncludingHeader(boolean includingHeadSuppressed) {
+        this.includingHeadSuppressed = includingHeadSuppressed;
         return this;
     }
 
-    public TypicalMixLayoutResolver suppressFooter(boolean footerSuppressed) {
-        this.suppressedFooter = footerSuppressed;
+    public TypicalMixLayoutResolver suppressReplacingHeader(boolean replacingHeaderSuppressed) {
+        this.replacingHeaderSuppressed = replacingHeaderSuppressed;
+        return this;
+    }
+
+    public TypicalMixLayoutResolver suppressReplacingFooter(boolean replacingFooterSuppressed) {
+        this.replacingFooterSuppressed = replacingFooterSuppressed;
+        return this;
+    }
+
+    public TypicalMixLayoutResolver suppressIncludingScript(boolean includingScriptSuppressed) {
+        this.includingScriptSuppressed = includingScriptSuppressed;
         return this;
     }
 
@@ -112,15 +108,20 @@ public class TypicalMixLayoutResolver {
             throw new IllegalArgumentException("The argument 'html' should not be null.");
         }
         if (supporter == null) {
-            throw new IllegalArgumentException("The supporter 'html' should not be null.");
+            throw new IllegalArgumentException("The supporter 'supporter' should not be null.");
         }
-        // TODO jflute mixer2: resolve head? merge? (2015/11/23)
         supporter.loadPartsHtml(getLayoutHtmlPath()).alwaysPresent(loaded -> {
+            if (isIncludingHead()) {
+                includeHead(html, supporter, loaded);
+            }
             if (isReplacingHeader()) {
                 replaceHeader(html, supporter, loaded);
             }
             if (isReplacingFooter()) {
                 replaceFooter(html, supporter, loaded);
+            }
+            if (isIncludingScript()) {
+                includeScript(html, supporter, loaded);
             }
             asYouLikeIt(html, supporter, loaded);
         });
@@ -130,12 +131,20 @@ public class TypicalMixLayoutResolver {
         return "/common/layout.html";
     }
 
+    protected boolean isIncludingHead() {
+        return !includingHeadSuppressed;
+    }
+
     protected boolean isReplacingHeader() {
-        return !suppressedHeader;
+        return !replacingHeaderSuppressed;
     }
 
     protected boolean isReplacingFooter() {
-        return !suppressedFooter;
+        return !replacingFooterSuppressed;
+    }
+
+    protected boolean isIncludingScript() {
+        return !includingScriptSuppressed;
     }
 
     protected void asYouLikeIt(Html html, Mixer2Supporter supporter, Html loaded) {
@@ -145,17 +154,23 @@ public class TypicalMixLayoutResolver {
     }
 
     // ===================================================================================
+    //                                                                               Head
+    //                                                                              ======
+    protected void includeHead(Html html, Mixer2Supporter supporter, Html loaded) {
+        final Head realHead = loaded.getHead();
+        final Head existingHead = html.getHead();
+        existingHead.getContent().addAll(realHead.getContent());
+    }
+
+    // ===================================================================================
     //                                                                              Header
     //                                                                              ======
     protected void replaceHeader(Html html, Mixer2Supporter supporter, Html loaded) {
-        final Header header = supporter.findById(loaded, getHeaderId(), Header.class).get();
-        supporter.resolveUrlLink(header);
-        asYouLikeHeader(header, supporter);
-        supporter.replaceById(html, getHeaderId(), header);
-    }
-
-    protected String getHeaderId() {
-        return headerId != null ? headerId : DEFAULT_HEADER_ID;
+        final Header realHeader = supporter.findHeader(loaded).get();
+        asYouLikeHeader(realHeader, supporter);
+        supporter.findHeader(html).alwaysPresent(existingHeader -> {
+            existingHeader.replaceInner(realHeader.getContent());
+        });
     }
 
     protected void asYouLikeHeader(Header header, Mixer2Supporter supporter) {
@@ -168,19 +183,31 @@ public class TypicalMixLayoutResolver {
     //                                                                              Footer
     //                                                                              ======
     protected void replaceFooter(Html html, Mixer2Supporter supporter, Html loaded) {
-        final Footer footer = supporter.findById(loaded, getFooterId(), Footer.class).get();
-        supporter.resolveUrlLink(footer);
-        asYouLikeFooter(footer, supporter);
-        supporter.replaceById(html, getFooterId(), footer);
-    }
-
-    protected String getFooterId() {
-        return footerId != null ? footerId : DEFAULT_FOOTER_ID;
+        final Footer realFooter = supporter.findFooter(loaded).get();
+        asYouLikeFooter(realFooter, supporter);
+        supporter.findFooter(html).alwaysPresent(existingHeader -> {
+            existingHeader.replaceInner(realFooter.getContent());
+        });
     }
 
     protected void asYouLikeFooter(Footer footer, Mixer2Supporter supporter) {
         if (footerResolver != null) {
             footerResolver.resolve(footer, supporter);
+        }
+    }
+
+    // ===================================================================================
+    //                                                                              Script
+    //                                                                              ======
+    protected void includeScript(Html html, Mixer2Supporter supporter, Html loaded) {
+        final List<Script> scriptList = loaded.getDescendants(Script.class);
+        final Body body = html.getBody();
+        final List<Object> contentList = body.getContent();
+        if (!scriptList.isEmpty()) {
+            for (Script script : scriptList) {
+                contentList.add(script);
+            }
+            contentList.add("\n"); // format
         }
     }
 }

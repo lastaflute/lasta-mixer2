@@ -33,11 +33,14 @@ import org.lastaflute.web.servlet.request.RequestManager;
 import org.mixer2.Mixer2Engine;
 import org.mixer2.jaxb.xhtml.Dl;
 import org.mixer2.jaxb.xhtml.Flow;
+import org.mixer2.jaxb.xhtml.Footer;
 import org.mixer2.jaxb.xhtml.Form;
+import org.mixer2.jaxb.xhtml.Header;
 import org.mixer2.jaxb.xhtml.Html;
 import org.mixer2.jaxb.xhtml.Inline;
 import org.mixer2.jaxb.xhtml.Input;
 import org.mixer2.jaxb.xhtml.Ol;
+import org.mixer2.jaxb.xhtml.Script;
 import org.mixer2.jaxb.xhtml.Select;
 import org.mixer2.jaxb.xhtml.Tbody;
 import org.mixer2.jaxb.xhtml.Td;
@@ -73,6 +76,25 @@ public class Mixer2Supporter {
     // ===================================================================================
     //                                                                            Find Tag
     //                                                                            ========
+    // #pending now design
+    //public <TAG extends AbstractJaxb> OptionalThing<TAG> findByDataItem(AbstractJaxb baseTag, String dataKey, Class<TAG> tagType) {
+    //    final List<AbstractJaxb> tagList = new ArrayList<AbstractJaxb>();
+    //    collectBy(Arrays.asList(baseTag), tag -> {
+    //        // #pending tagType check
+    //        final String data = tag.getData("item");
+    //        return data != null && data.equals(dataKey); // e.g. data-item="sea"
+    //    } , tagList); // #pending performance tuning as-one
+    //    if (tagList.size() > 2) { // #pending rich message
+    //        throw new IllegalStateException("Duplicate name for header tag: found=" + tagList);
+    //    }
+    //    @SuppressWarnings("unchecked")
+    //    final TAG foundTag = (TAG) (!tagList.isEmpty() ? tagList.get(0) : null);
+    //    return OptionalThing.ofNullable(foundTag, () -> {
+    //        // #pending rich message
+    //        throw new IllegalStateException("Not found the data tag by the key: " + dataKey);
+    //    });
+    //}
+
     public <TAG extends AbstractJaxb> OptionalThing<TAG> findById(AbstractJaxb baseTag, String id, Class<TAG> tagType) {
         assertObjectNotNull("baseTag", baseTag);
         assertObjectNotNull("id", id);
@@ -112,6 +134,36 @@ public class Mixer2Supporter {
         br.addElement(baseTag);
         final String msg = br.buildExceptionMessage();
         throw new Mixer2GetByIDNotFoundException(msg);
+    }
+
+    public OptionalThing<Header> findHeader(AbstractJaxb baseTag) {
+        final List<AbstractJaxb> tagList = new ArrayList<AbstractJaxb>();
+        collectBy(Arrays.asList(baseTag), tag -> {
+            return Header.class.isAssignableFrom(tag.getClass());
+        } , tagList); // #pending performance tuning as-one
+        if (tagList.size() > 2) { // #pending rich message
+            throw new IllegalStateException("Duplicate name for header tag: found=" + tagList);
+        }
+        final Header foundHeader = (Header) (!tagList.isEmpty() ? tagList.get(0) : null);
+        return OptionalThing.ofNullable(foundHeader, () -> {
+            // #pending rich message
+            throw new IllegalStateException("Not found the header tag in the tag: " + baseTag);
+        });
+    }
+
+    public OptionalThing<Footer> findFooter(AbstractJaxb baseTag) {
+        final List<AbstractJaxb> tagList = new ArrayList<AbstractJaxb>();
+        collectBy(Arrays.asList(baseTag), tag -> {
+            return Footer.class.isAssignableFrom(tag.getClass());
+        } , tagList); // #pending performance tuning as-one
+        if (tagList.size() > 2) { // #pending rich message
+            throw new IllegalStateException("Duplicate name for footer tag: found=" + tagList);
+        }
+        final Footer foundHeader = (Footer) (!tagList.isEmpty() ? tagList.get(0) : null);
+        return OptionalThing.ofNullable(foundHeader, () -> {
+            // #pending rich message
+            throw new IllegalStateException("Not found the footer tag in the tag: " + baseTag);
+        });
     }
 
     public OptionalThing<Input> findInput(AbstractJaxb baseTag, String name) {
@@ -167,6 +219,13 @@ public class Mixer2Supporter {
                 final AbstractJaxb tag = (AbstractJaxb) element;
                 if (determiner.isTarget(tag)) {
                     tagList.add(tag);
+                }
+                if (element instanceof Html) {
+                    final Html html = (Html) tag;
+                    collectBy(Arrays.asList(html.getHead()), determiner, tagList);
+                    collectBy(html.getDescendants(Header.class), determiner, tagList);
+                    collectBy(html.getDescendants(Footer.class), determiner, tagList);
+                    collectBy(html.getDescendants(Script.class), determiner, tagList);
                 }
                 if (element instanceof Flow) {
                     collectBy(((Flow) tag).getContent(), determiner, tagList);
@@ -241,26 +300,9 @@ public class Mixer2Supporter {
     }
 
     // ===================================================================================
-    //                                                                    Resolve URL Link
-    //                                                                    ================
-    public void resolveUrlLink(AbstractJaxb tag) {
-        assertObjectNotNull("tag", tag);
-        PathAdjuster.replacePath(tag, Pattern.compile("@\\{/"), requestManager.getContextPath() + "/");
-        PathAdjuster.replacePath(tag, Pattern.compile("}$"), ""); // e.g. @{/sea/land/} => /harbor/sea/land/
-    }
-
-    // ===================================================================================
-    //                                                                          Load Parts
-    //                                                                          ==========
-    public OptionalThing<Html> loadPartsHtml(String path) {
-        assertObjectNotNull("path", path);
-        return templateReader.loadHtml(path).map(loaded -> loaded.getHtml());
-    }
-
-    // ===================================================================================
-    //                                                                           Table Tag
-    //                                                                           =========
-    public <ENTITY> void reflectListToTBody(AbstractJaxb baseTag, List<ENTITY> entityList, String tbodyId,
+    //                                                                        Reflect Data
+    //                                                                        ============
+    public <ENTITY> void reflectListToTBody(List<ENTITY> entityList, AbstractJaxb baseTag, String tbodyId,
             Consumer<TableDataResource<ENTITY>> oneArgLambda) {
         assertObjectNotNull("baseTag", baseTag);
         assertObjectNotNull("entityList", entityList);
@@ -323,6 +365,23 @@ public class Mixer2Supporter {
         public ENTITY getEntity() {
             return entity;
         }
+    }
+
+    // ===================================================================================
+    //                                                                    Resolve URL Link
+    //                                                                    ================
+    public void resolveUrlLink(AbstractJaxb tag) {
+        assertObjectNotNull("tag", tag);
+        PathAdjuster.replacePath(tag, Pattern.compile("@\\{/"), requestManager.getContextPath() + "/");
+        PathAdjuster.replacePath(tag, Pattern.compile("}$"), ""); // e.g. @{/sea/land/} => /harbor/sea/land/
+    }
+
+    // ===================================================================================
+    //                                                                          Load Parts
+    //                                                                          ==========
+    public OptionalThing<Html> loadPartsHtml(String path) {
+        assertObjectNotNull("path", path);
+        return templateReader.loadHtml(path).map(loaded -> loaded.getHtml());
     }
 
     // ===================================================================================

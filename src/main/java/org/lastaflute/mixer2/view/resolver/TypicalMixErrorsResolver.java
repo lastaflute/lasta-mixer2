@@ -68,8 +68,9 @@ public class TypicalMixErrorsResolver {
                 ul.replaceInner(liList); // #hope List<? extends Object>
                 errorsTag.replaceInner(ul);
             } else {
-                if (propertySet.contains(errorsName)) {
-                    final List<ResolvedMessage> messageList = messages.part(errorsName);
+                final String propertyName = toPropertyName(errorsName);
+                if (propertySet.contains(propertyName)) {
+                    final List<ResolvedMessage> messageList = messages.part(propertyName);
                     final String joinedMessage = messageList.stream().map(message -> {
                         return message.getMessage();
                     }).collect(Collectors.joining(", ")); // #thinking use any tag?
@@ -101,7 +102,7 @@ public class TypicalMixErrorsResolver {
         return new ActionMessages();
     }
 
-    protected String buildPropertyIdExp(String property) {
+    protected String toPropertyName(String property) {
         return ActionMessages.GLOBAL_PROPERTY_KEY.equals(property) ? "global" : property;
     }
 }
