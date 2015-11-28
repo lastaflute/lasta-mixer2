@@ -20,6 +20,7 @@ import org.lastaflute.mixer2.view.resolver.TypicalMixClsResolver;
 import org.lastaflute.mixer2.view.resolver.TypicalMixErrorsResolver;
 import org.lastaflute.mixer2.view.resolver.TypicalMixLayoutResolver;
 import org.lastaflute.mixer2.view.resolver.TypicalMixStyleResolver;
+import org.lastaflute.web.UrlChain;
 import org.mixer2.jaxb.xhtml.Html;
 
 /**
@@ -52,8 +53,8 @@ public abstract class TypicalMixView implements Mixer2View {
         resolveErrors(html, supporter);
         resolveLayout(html, supporter);
         resolveStyle(html, supporter);
-        resolveUrlLink(html, supporter);
         render(html, supporter);
+        resolveLinkUrl(html, supporter);
     }
 
     protected abstract void render(Html html, Mixer2Supporter supporter);
@@ -108,10 +109,10 @@ public abstract class TypicalMixView implements Mixer2View {
     }
 
     // ===================================================================================
-    //                                                                            URL Link
+    //                                                                            Link URL
     //                                                                            ========
-    protected void resolveUrlLink(Html html, Mixer2Supporter supporter) {
-        supporter.resolveUrlLink(html);
+    protected void resolveLinkUrl(Html html, Mixer2Supporter supporter) {
+        supporter.resolveLinkUrl(html);
     }
 
     // ===================================================================================
@@ -126,5 +127,57 @@ public abstract class TypicalMixView implements Mixer2View {
 
     protected boolean isNotEmpty(String str) {
         return Srl.is_NotNull_and_NotEmpty(str);
+    }
+
+    // -----------------------------------------------------
+    //                                    UrlChain Following
+    //                                    ------------------
+    /**
+     * Set up more URL parts as URL chain. <br>
+     * The name and specification of this method is synchronized with UrlChain#moreUrl().
+     * @param urlParts The varying array of URL parts. (NotNull)
+     * @return The created instance of URL chain. (NotNull)
+     */
+    protected UrlChain moreUrl(Object... urlParts) {
+        assertArgumentNotNull("urlParts", urlParts);
+        return newUrlChain().moreUrl(urlParts);
+    }
+
+    /**
+     * Set up parameters on GET as URL chain. <br>
+     * The name and specification of this method is synchronized with UrlChain#params().
+     * @param paramsOnGet The varying array of parameters on GET. (NotNull)
+     * @return The created instance of URL chain. (NotNull)
+     */
+    protected UrlChain params(Object... paramsOnGet) {
+        assertArgumentNotNull("paramsOnGet", paramsOnGet);
+        return newUrlChain().params(paramsOnGet);
+    }
+
+    /**
+     * Set up hash on URL as URL chain. <br>
+     * The name and specification of this method is synchronized with UrlChain#hash().
+     * @param hashOnUrl The value of hash on URL. (NotNull)
+     * @return The created instance of URL chain. (NotNull)
+     */
+    protected UrlChain hash(Object hashOnUrl) {
+        assertArgumentNotNull("hashOnUrl", hashOnUrl);
+        return newUrlChain().hash(hashOnUrl);
+    }
+
+    protected UrlChain newUrlChain() {
+        return new UrlChain(this);
+    }
+
+    // ===================================================================================
+    //                                                                      General Helper
+    //                                                                      ==============
+    private void assertArgumentNotNull(String variableName, Object value) {
+        if (variableName == null) {
+            throw new IllegalArgumentException("The argument 'variableName' should not be null.");
+        }
+        if (value == null) {
+            throw new IllegalArgumentException("The argument '" + variableName + "' should not be null.");
+        }
     }
 }

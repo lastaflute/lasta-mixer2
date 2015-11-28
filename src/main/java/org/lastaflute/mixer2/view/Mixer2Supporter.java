@@ -29,8 +29,11 @@ import org.lastaflute.mixer2.exception.Mixer2GetByIDNotFoundException;
 import org.lastaflute.mixer2.exception.Mixer2ReplaceByIDFailureException;
 import org.lastaflute.mixer2.exception.Mixer2ReplaceByIDNotFoundException;
 import org.lastaflute.mixer2.template.Mixer2TemplateReader;
+import org.lastaflute.web.UrlChain;
+import org.lastaflute.web.path.ActionPathResolver;
 import org.lastaflute.web.servlet.request.RequestManager;
 import org.mixer2.Mixer2Engine;
+import org.mixer2.jaxb.xhtml.A;
 import org.mixer2.jaxb.xhtml.Dl;
 import org.mixer2.jaxb.xhtml.Flow;
 import org.mixer2.jaxb.xhtml.Footer;
@@ -40,6 +43,7 @@ import org.mixer2.jaxb.xhtml.Html;
 import org.mixer2.jaxb.xhtml.Inline;
 import org.mixer2.jaxb.xhtml.Input;
 import org.mixer2.jaxb.xhtml.Ol;
+import org.mixer2.jaxb.xhtml.Option;
 import org.mixer2.jaxb.xhtml.Script;
 import org.mixer2.jaxb.xhtml.Select;
 import org.mixer2.jaxb.xhtml.Tbody;
@@ -60,17 +64,21 @@ public class Mixer2Supporter {
     protected final Mixer2Engine engine;
     protected final RequestManager requestManager;
     protected final Mixer2TemplateReader templateReader;
+    protected final ActionPathResolver actionPathResolver;
 
     // ===================================================================================
     //                                                                         Constructor
     //                                                                         ===========
-    public Mixer2Supporter(Mixer2Engine engine, RequestManager requestManager, Mixer2TemplateReader templateReader) {
-        assertObjectNotNull("engine", engine);
-        assertObjectNotNull("requestManager", requestManager);
-        assertObjectNotNull("templateReader", templateReader);
+    public Mixer2Supporter(Mixer2Engine engine, RequestManager requestManager, Mixer2TemplateReader templateReader,
+            ActionPathResolver actionPathResolver) {
+        assertArgumentNotNull("engine", engine);
+        assertArgumentNotNull("requestManager", requestManager);
+        assertArgumentNotNull("templateReader", templateReader);
+        assertArgumentNotNull("actionPathResolver", actionPathResolver);
         this.engine = engine;
         this.requestManager = requestManager;
         this.templateReader = templateReader;
+        this.actionPathResolver = actionPathResolver;
     }
 
     // ===================================================================================
@@ -96,9 +104,9 @@ public class Mixer2Supporter {
     //}
 
     public <TAG extends AbstractJaxb> OptionalThing<TAG> findById(AbstractJaxb baseTag, String id, Class<TAG> tagType) {
-        assertObjectNotNull("baseTag", baseTag);
-        assertObjectNotNull("id", id);
-        assertObjectNotNull("tagType", tagType);
+        assertArgumentNotNull("baseTag", baseTag);
+        assertArgumentNotNull("id", id);
+        assertArgumentNotNull("tagType", tagType);
         final TAG found;
         try {
             found = baseTag.getById(id, tagType);
@@ -253,12 +261,141 @@ public class Mixer2Supporter {
     }
 
     // ===================================================================================
+    //                                                                        Reflect Data
+    //                                                                        ============
+    public <ENTITY> void reflectListToTBody(List<ENTITY> entityList, AbstractJaxb baseTag, String tbodyId,
+            Consumer<TableDataResource<ENTITY>> oneArgLambda) {
+        assertArgumentNotNull("baseTag", baseTag);
+        assertArgumentNotNull("entityList", entityList);
+        assertArgumentNotNull("tbodyId", tbodyId);
+        assertArgumentNotNull("oneArgLambda", oneArgLambda);
+        final Tbody tbody = findById(baseTag, tbodyId, Tbody.class).get();
+        final Tr baseTr = tbody.getTr().get(0).copy(Tr.class); // #pending check out of bounds
+        tbody.unsetTr();
+        entityList.forEach(entity -> {
+            final Tr tr = baseTr.copy(Tr.class);
+            final List<Td> tdList = tr.getThOrTd().stream().map(flow -> {
+                return (Td) flow; // #pending check class cast
+            }).collect(Collectors.toList());
+            oneArgLambda.accept(new TableDataResource<ENTITY>(tbody, tr, tdList, entity));
+            tbody.getTr().add(tr);
+        });
+    }
+
+    public static class TableDataResource<ENTITY> {
+
+        protected final Tbody tbody;
+        protected final Tr tr;
+        protected final List<Td> tdList;
+        protected final ENTITY entity;
+        protected int index;
+
+        public TableDataResource(Tbody tbody, Tr tr, List<Td> tdList, ENTITY entity) {
+            this.tbody = tbody;
+            this.tr = tr;
+            this.tdList = tdList;
+            this.entity = entity;
+        }
+
+        public void register(Object text) {
+            getCurrentTd().replaceInner(text.toString()); // #pending check out of bounds
+            next();
+        }
+
+        public void registerTag(AbstractJaxb tag) {
+            getCurrentTd().replaceInner(tag); // #pending check out of bounds
+            next();
+        }
+
+        public void registerWithInner(Consumer<TableDataInner> oneArgLambda) {
+            oneArgLambda.accept(new TableDataInner(getCurrentTd(), getCurrentTd().getContent()));
+            next();
+        }
+
+        public void next() {
+            ++index;
+        }
+
+        public Tbody getTbody() {
+            return tbody;
+        }
+
+        public Tr getTr() {
+            return tr;
+        }
+
+        public Td getCurrentTd() {
+            return tdList.get(index); // #pending check out of bounds
+        }
+
+        public List<Td> getTdList() {
+            return tdList;
+        }
+
+        public ENTITY getEntity() {
+            return entity;
+        }
+    }
+
+    public static class TableDataInner {
+
+        protected final Td currentTd;
+        protected final List<Object> innerObjList;
+
+        public TableDataInner(Td currentTd, List<Object> innerObjList) {
+            this.currentTd = currentTd;
+            this.innerObjList = innerObjList;
+        }
+
+        public <TAG extends AbstractJaxb> OptionalThing<TAG> findFirst(Class<TAG> tagType) {
+            return OptionalThing.migratedFrom(innerObjList.stream().filter(innerObj -> {
+                return tagType.isAssignableFrom(innerObj.getClass());
+            }).map(obj -> {
+                @SuppressWarnings("unchecked")
+                final TAG tag = (TAG) obj;
+                return tag;
+            }).findFirst(), () -> { // #pending rich message
+                throw new IllegalStateException("Not found the first tag: " + tagType);
+            });
+        }
+
+        public Td getCurrentTd() {
+            return currentTd;
+        }
+
+        public List<Object> getInnerObjList() {
+            return innerObjList;
+        }
+    }
+
+    public void reflectSelectSelected(AbstractJaxb tag, String selectTagName, String value) {
+        assertArgumentNotNull("tag", tag);
+        assertArgumentNotNull("selectTagName", selectTagName);
+        assertArgumentNotNull("value", value);
+        findSelect(tag, selectTagName).alwaysPresent(select -> {
+            final List<AbstractJaxb> groupOrOptList = select.getOptgroupOrOption();
+            for (AbstractJaxb groupOrOpt : groupOrOptList) {
+                final Option option = (Option) groupOrOpt; // #pending support optgroup
+                if (value.equals(option.getValue())) {
+                    option.setSelected("selected");
+                }
+            }
+        });
+    }
+
+    public void reflectLinkUrl(A atag, String url) {
+        assertArgumentNotNull("atag", atag);
+        assertArgumentNotNull("url", url);
+        atag.setHref(url);
+    }
+
+    // ===================================================================================
     //                                                                         Replace Tag
     //                                                                         ===========
     public void replaceById(AbstractJaxb baseTag, String id, AbstractJaxb replacememt) {
-        assertObjectNotNull("baseTag", baseTag);
-        assertObjectNotNull("id", id);
-        assertObjectNotNull("replacememt", replacememt);
+        assertArgumentNotNull("baseTag", baseTag);
+        assertArgumentNotNull("id", id);
+        assertArgumentNotNull("replacememt", replacememt);
         boolean replaced;
         try {
             replaced = baseTag.replaceById(id, replacememt);
@@ -300,94 +437,33 @@ public class Mixer2Supporter {
     }
 
     // ===================================================================================
-    //                                                                        Reflect Data
-    //                                                                        ============
-    public <ENTITY> void reflectListToTBody(List<ENTITY> entityList, AbstractJaxb baseTag, String tbodyId,
-            Consumer<TableDataResource<ENTITY>> oneArgLambda) {
-        assertObjectNotNull("baseTag", baseTag);
-        assertObjectNotNull("entityList", entityList);
-        assertObjectNotNull("tbodyId", tbodyId);
-        assertObjectNotNull("oneArgLambda", oneArgLambda);
-        final Tbody tbody = findById(baseTag, tbodyId, Tbody.class).get();
-        final Tr baseTr = tbody.getTr().get(0).copy(Tr.class); // #pending check out of bounds
-        tbody.unsetTr();
-        entityList.forEach(entity -> {
-            final Tr tr = baseTr.copy(Tr.class);
-            final List<Td> tdList = tr.getThOrTd().stream().map(flow -> {
-                return (Td) flow; // #pending check class cast
-            }).collect(Collectors.toList());
-            oneArgLambda.accept(new TableDataResource<ENTITY>(tbody, tr, tdList, entity));
-            tbody.getTr().add(tr);
-        });
-    }
-
-    public static class TableDataResource<ENTITY> {
-
-        protected final Tbody tbody;
-        protected final Tr tr;
-        protected final List<Td> tdList;
-        protected final ENTITY entity;
-        protected int index;
-
-        public TableDataResource(Tbody tbody, Tr tr, List<Td> tdList, ENTITY entity) {
-            this.tbody = tbody;
-            this.tr = tr;
-            this.tdList = tdList;
-            this.entity = entity;
-        }
-
-        public void reflectTag(AbstractJaxb tag) {
-            tdList.get(index).replaceInner(tag); // #pending check out of bounds
-            ++index;
-        }
-
-        public void reflectText(Object text) {
-            tdList.get(index).replaceInner(text.toString()); // #pending check out of bounds
-            ++index;
-        }
-
-        public Tbody getTbody() {
-            return tbody;
-        }
-
-        public Tr getTr() {
-            return tr;
-        }
-
-        public Td getCurrentTd() {
-            return tdList.get(index); // #pending check out of bounds
-        }
-
-        public List<Td> getTdList() {
-            return tdList;
-        }
-
-        public ENTITY getEntity() {
-            return entity;
-        }
+    //                                                                    Resolve Link URL
+    //                                                                    ================
+    public void resolveLinkUrl(AbstractJaxb tag) {
+        assertArgumentNotNull("tag", tag);
+        PathAdjuster.replacePath(tag, Pattern.compile("@\\{/"), requestManager.getContextPath() + "/");
+        PathAdjuster.replacePath(tag, Pattern.compile("}$"), ""); // e.g. @{/sea/land/} => /harbor/sea/land/
     }
 
     // ===================================================================================
-    //                                                                    Resolve URL Link
-    //                                                                    ================
-    public void resolveUrlLink(AbstractJaxb tag) {
-        assertObjectNotNull("tag", tag);
-        PathAdjuster.replacePath(tag, Pattern.compile("@\\{/"), requestManager.getContextPath() + "/");
-        PathAdjuster.replacePath(tag, Pattern.compile("}$"), ""); // e.g. @{/sea/land/} => /harbor/sea/land/
+    //                                                                          Convert to
+    //                                                                          ==========
+    public String toLinkUrl(Class<?> actionType, UrlChain moreUrl_or_params) {
+        return "@{" + actionPathResolver.toActionUrl(actionType, moreUrl_or_params) + "}";
     }
 
     // ===================================================================================
     //                                                                          Load Parts
     //                                                                          ==========
     public OptionalThing<Html> loadPartsHtml(String path) {
-        assertObjectNotNull("path", path);
+        assertArgumentNotNull("path", path);
         return templateReader.loadHtml(path).map(loaded -> loaded.getHtml());
     }
 
     // ===================================================================================
     //                                                                      General Helper
     //                                                                      ==============
-    protected void assertObjectNotNull(String variableName, Object value) {
+    protected void assertArgumentNotNull(String variableName, Object value) {
         if (variableName == null) {
             throw new IllegalArgumentException("The argument 'variableName' should not be null.");
         }

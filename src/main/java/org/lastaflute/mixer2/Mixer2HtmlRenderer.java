@@ -31,6 +31,7 @@ import org.lastaflute.mixer2.template.Mixer2TemplateReader;
 import org.lastaflute.mixer2.template.Mixer2TemplateReader.LoadedHtml;
 import org.lastaflute.mixer2.view.Mixer2Supporter;
 import org.lastaflute.mixer2.view.Mixer2View;
+import org.lastaflute.web.path.ActionPathResolver;
 import org.lastaflute.web.ruts.NextJourney;
 import org.lastaflute.web.ruts.process.ActionRuntime;
 import org.lastaflute.web.ruts.renderer.HtmlRenderer;
@@ -160,7 +161,8 @@ public class Mixer2HtmlRenderer implements HtmlRenderer {
 
     protected Mixer2Supporter createMixer2Supporter(RequestManager requestManager, ActionRuntime runtime, NextJourney journey,
             Mixer2TemplateReader reader) {
-        return new Mixer2Supporter(engine, requestManager, reader);
+        final ActionPathResolver actionPathResolver = ContainerUtil.getComponent(ActionPathResolver.class); // #pending from requestManager
+        return new Mixer2Supporter(engine, requestManager, reader, actionPathResolver);
     }
 
     protected void throwMixer2DynamicHtmlFailureException(ActionRuntime runtime, NextJourney journey, Mixer2View view, Html html,

@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.lastaflute.html</groupId>
 	<artifactId>lasta-mixer2</artifactId>
-	<version>0.2.0-R-SNAPSHOT</version> <!-- RC6 -->
+	<version>0.2.0-S-SNAPSHOT</version> <!-- RC6 -->
 	<packaging>jar</packaging>
 
 	<name>Lasta Mixer2</name>
@@ -12,10 +12,10 @@
 	<inceptionYear>2015</inceptionYear>
 
 	<properties>
-		<lastaflute.version>0.6.6</lastaflute.version>
+		<lastaflute.version>0.6.8</lastaflute.version>
 		<mixer2.version>1.3.1</mixer2.version>
 		<servlet.version>3.1.0</servlet.version>
-		<utflute.version>0.5.4</utflute.version>
+		<utflute.version>0.5.5</utflute.version>
 		<junit.version>4.8.2</junit.version> <!-- latest version without hamcrest -->
 	</properties>
 
