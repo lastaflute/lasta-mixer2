@@ -59,7 +59,7 @@ public class TypicalMixErrorsResolver {
             if ("all".equalsIgnoreCase(errorsName)) {
                 final List<ResolvedMessage> messageList = messages.getAll();
                 final Ul ul = new Ul();
-                final List<Object> liList = new ArrayList<Object>();
+                final List<Li> liList = new ArrayList<Li>();
                 for (ResolvedMessage message : messageList) {
                     final Li li = new Li();
                     li.replaceInner(message.getMessage());
